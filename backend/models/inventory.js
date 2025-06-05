@@ -20,6 +20,11 @@ const InventorySchema = new mongoose.Schema({
     required: true, 
     default: 0 
   },
+   orderedStock: { 
+    type: Number, 
+    required: true, 
+    default: 0 
+  },
   
   lastUpdated: { 
     type: Date, 

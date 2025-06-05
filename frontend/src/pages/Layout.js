@@ -117,7 +117,7 @@ export default function Layout() {
                   >
                     {/* Show icon on mobile, hide on desktop */}
                     <div className="block md:hidden mb-1">
-                      {typeof Icon === 'function' ? <Icon /> : <Icon className="w-4 h-4" />}
+                      {typeof Icon === 'function' ? <Icon /> : <Icon className="w-6 h-6" />}
                     </div>
                     <span className="text-center">{name}</span>
                   </button>
