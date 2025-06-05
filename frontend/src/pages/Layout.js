@@ -18,9 +18,9 @@ function TogglingPaymentIcon() {
   return (
     <div className="transition-opacity duration-500 ease-in-out">
       {showFirst ? (
-        <BanknoteArrowUp className="w-5 h-5 mb-1" />
+        <BanknoteArrowUp className="mb-1" />
       ) : (
-        <Landmark className="w-5 h-5 mb-1" />
+        <Landmark className="mb-1" />
       )}
     </div>
   );
@@ -117,7 +117,7 @@ export default function Layout() {
                   >
                     {/* Show icon on mobile, hide on desktop */}
                     <div className="block md:hidden mb-1">
-                      {typeof Icon === 'function' ? <Icon /> : <Icon className="w-6 h-6" />}
+                      {typeof Icon === 'function' ? <Icon /> : <Icon className="w-16 h-8" />}
                     </div>
                     <span className="text-center">{name}</span>
                   </button>
