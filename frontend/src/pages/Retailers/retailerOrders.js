@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Trash, Trash2, Check, CircleCheck } from "lucide-react";
 
-const Orders = () => {
+const RetailerOrders = () => {
   const [activeTab, setActiveTab] = useState("pending");
   const [pendingOrders, setPendingOrders] = useState([
     { id: 1, item: "Aashirvaad Atta", quantity: 10, rate: 300, checked: false, distributor: "Hindustan Distributors" },
@@ -487,4 +487,4 @@ const handleSelectAllChange = () => {
   );
 };
 
-export default Orders;
+export default RetailerOrders;

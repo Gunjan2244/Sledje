@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronDown, ChevronUp, Calendar, TrendingUp, DollarSign, Clock, CheckCircle, AlertCircle, Eye } from 'lucide-react';
 
-const Payment = () => {
+const RetailerPayment = () => {
   const [selectedDistributors, setSelectedDistributors] = useState(new Set());
   const [expandedDistributors, setExpandedDistributors] = useState(new Set());
   const [expandedBills, setExpandedBills] = useState(new Set());
@@ -525,4 +525,4 @@ const Payment = () => {
   );
 };
 
-export default Payment;
+export default RetailerPayment;

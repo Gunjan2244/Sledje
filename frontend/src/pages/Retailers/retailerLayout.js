@@ -2,8 +2,7 @@ import { NavLink, Outlet } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { PlaneLanding, Library, BanknoteArrowUp, Landmark, User, ScanBarcode, MoreVertical, LogOut } from "lucide-react";
-import logo from "../assets/navBarLogo1.png"; // Import your logo
-import {useAuth} from "../components/AuthContext.js"; // Import the AuthContext
+import {useAuth} from "../../components/AuthContext.js"; // Import the AuthContext
 
 function TogglingPaymentIcon() {
   const [showFirst, setShowFirst] = useState(true);
@@ -18,21 +17,21 @@ function TogglingPaymentIcon() {
   return (
     <div className="transition-opacity duration-500 ease-in-out">
       {showFirst ? (
-        <BanknoteArrowUp className="mb-1" />
+        <BanknoteArrowUp className="w-5 h-5 mb-1" />
       ) : (
-        <Landmark className="mb-1" />
+        <Landmark className="w-5 h-5 mb-1" />
       )}
     </div>
   );
 }
 
-export default function Layout() {
+export default function RetailerLayout() {
   const navItems = [
-    { name: "Shop", to: "/layout/shop", icon: ScanBarcode },
-    { name: "Shelf", to: "/layout/shelf", icon: Library },
-    { name: "Payments", to: "/layout/payment", icon: TogglingPaymentIcon },
-    { name: "Orders", to: "/layout/orders", icon: PlaneLanding },
-    { name: "You", to: "/layout/you", icon: User },
+    { name: "Shop", to: "/retailer/shop", icon: ScanBarcode },
+    { name: "Shelf", to: "/retailer/shelf", icon: Library },
+    { name: "Payments", to: "/retailer/payment", icon: TogglingPaymentIcon },
+    { name: "Orders", to: "/retailer/orders", icon: PlaneLanding },
+    { name: "You", to: "/retailer/you", icon: User },
   ];
 
   const navigate = useNavigate();
@@ -117,7 +116,7 @@ export default function Layout() {
                   >
                     {/* Show icon on mobile, hide on desktop */}
                     <div className="block md:hidden mb-1">
-                      {typeof Icon === 'function' ? <Icon /> : <Icon className="w-16 h-8" />}
+                      {typeof Icon === 'function' ? <Icon /> : <Icon className="w-4 h-4" />}
                     </div>
                     <span className="text-center">{name}</span>
                   </button>

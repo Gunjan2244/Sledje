@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { BarChart, CreditCard, Package, ShoppingCart, TrendingUp, Users } from "lucide-react";
-import Footer from "../components/Footer"; // <-- Import your existing Footer
+import Footer from "../../components/Footer"; // <-- Import your existing Footer
 
 export default function LandingPage() {
  return (
