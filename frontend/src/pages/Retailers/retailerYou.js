@@ -114,9 +114,12 @@ export default function RetailerYou() {
     try {
       setLoading(true);
       const response = await API.get('/connections/retailer/distributors');
-      setConnectedDistributors(response.data);
+      // Ensure we always set an array
+      const distributors = response.data?.distributors || response.data || [];
+      setConnectedDistributors(Array.isArray(distributors) ? distributors : []);
     } catch (error) {
       console.error('Error fetching connected distributors:', error);
+      setConnectedDistributors([]); // Set to empty array on error
     } finally {
       setLoading(false);
     }
@@ -126,9 +129,11 @@ export default function RetailerYou() {
     try {
       setLoading(true);
       const response = await API.get('/connections/retailer/requests');
-      setConnectionRequests(response.data.requests || []);
+      const requests = response.data?.requests || response.data || [];
+      setConnectionRequests(Array.isArray(requests) ? requests : []);
     } catch (error) {
       console.error('Error fetching connection requests:', error);
+      setConnectionRequests([]); // Set to empty array on error
     } finally {
       setLoading(false);
     }
@@ -141,12 +146,15 @@ export default function RetailerYou() {
     try {
       setIsSearching(true);
       const response = await API.get(`/connections/search/distributors?companyName=${encodeURIComponent(query)}`);
-      const data = await response.json();
-      if (response.ok) {
-        setSearchResults(data.results || []);
+      
+      // Fix: Don't call response.json() on axios response
+      if (response.status === 200) {
+        const results = response.data?.results || response.data || [];
+        setSearchResults(Array.isArray(results) ? results : []);
       }
     } catch (error) {
       console.error('Error searching distributors:', error);
+      setSearchResults([]); // Set to empty array on error
     } finally {
       setIsSearching(false);
     }
@@ -160,13 +168,13 @@ export default function RetailerYou() {
         message
       });
       
-      const data = await response.json();
-      if (response.ok) {
+      // Fix: Don't call response.json() on axios response
+      if (response.status === 200 || response.status === 201) {
         alert('Connection request sent successfully!');
         setSearchResults(prev => prev.filter(d => d._id !== distributorId));
         fetchConnectionRequests(); // Refresh requests
       } else {
-        alert(data.message || 'Failed to send connection request');
+        alert(response.data?.message || 'Failed to send connection request');
       }
     } catch (error) {
       console.error('Error sending connection request:', error);
@@ -179,11 +187,11 @@ export default function RetailerYou() {
        
     try {
       const response = await API.delete(`/connections/remove/${distributorId}`);
-      if (response.ok) {
+      if (response.status === 200) {
         alert('Connection removed successfully!');
         fetchConnectedDistributors(); // Refresh connected distributors
       } else {
-        alert(response.data.message || 'Failed to remove connection');
+        alert(response.data?.message || 'Failed to remove connection');
       }
     } catch (error) {
       console.error('Error removing connection:', error);
@@ -252,9 +260,11 @@ export default function RetailerYou() {
       const businessType = retailerProfile?.businessType;
       if (!pincode && !businessType) return;
       const response = await API.get(`/connections/suggestions?pincode=${pincode}&businessType=${businessType}`);
-      setSuggestedDistributors(response.data.distributors || []);
+      const distributors = response.data?.distributors || response.data || [];
+      setSuggestedDistributors(Array.isArray(distributors) ? distributors : []);
     } catch (error) {
       console.error('Error fetching suggested distributors:', error);
+      setSuggestedDistributors([]); // Set to empty array on error
     } finally {
       setLoading(false);
     }
