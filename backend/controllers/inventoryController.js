@@ -6,6 +6,7 @@ import Product from '../models/Product.js';
  */
 export const getInventory = async (req, res) => {
   try {
+    console.log('📥 Fetching inventory for retailer:');
     // Fetch inventory for the logged-in retailer
     const inventory = await Inventory.find({ retailerId: req.user._id }).populate({
       path: 'productId',
@@ -25,6 +26,7 @@ export const getInventory = async (req, res) => {
         category: product.category,
         variants: product.variants.map(v => ({
           id: v.id,
+          _id: v._id,
           name: v.name,
           stock: v._id.toString() === item.variantId.toString() ? item.stock : 0,
           sellingPrice: v.sellingPrice,
@@ -101,28 +103,37 @@ export const checkoutInventory = async (req, res) => {
 };
 
 
-
 export const addToInventory = async (req, res) => {
-  const { productId, variantId, stock } = req.body;
-
+  const { variantId ,stock=0 } = req.body;
+  console.log('Adding to inventory:', variantId, stock);  
   try {
-    const product = await Product.findById(productId);
+    // Find the product and variant by variantId
+    const product = await Product.findOne({ "variants._id": variantId });
     if (!product) {
-      return res.status(404).json({ message: 'Product not found' });
+      return res.status(404).json({ message: 'Product not found for this variant' });
     }
 
-    const variant = product.variants.find(v => v._id.toString() === variantId);
+    const variant = product.variants.id(variantId);
     if (!variant) {
       return res.status(404).json({ message: 'Variant not found' });
     }
 
+    // Upsert inventory item for this retailer, product, and variant
     const inventoryItem = await Inventory.findOneAndUpdate(
-      { retailerId: req.user._id, productId, variantId },
-      { $inc: { stock: stock || 0 }, lastUpdated: Date.now() },
+      {
+        retailerId: req.user._id,
+        productId: product._id,
+        variantId: variant._id,
+      },
+      {
+        $inc: { stock }, // increment by stock (can be 0 for just adding)
+        sku: variant.sku,
+        lastUpdated: Date.now(),
+      },
       { new: true, upsert: true }
     );
 
-    res.status(200).json({ message: 'Product added to inventory', inventoryItem });
+    res.status(200).json({ message: 'Product variant added to inventory', inventoryItem });
   } catch (error) {
     console.error('❌ Error adding to inventory:', error.message);
     res.status(500).json({ message: 'Server Error' });

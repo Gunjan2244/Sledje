@@ -15,17 +15,21 @@ const InventorySchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId, 
     required: true 
   },
+  sku: { 
+    type: String, 
+    required: true, 
+    unique: true 
+  },
   stock: { 
     type: Number, 
     required: true, 
     default: 0 
   },
-   orderedStock: { 
+  orderedStock: {
     type: Number, 
     required: true, 
     default: 0 
   },
-  
   lastUpdated: { 
     type: Date, 
     default: Date.now 
