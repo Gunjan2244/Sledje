@@ -24,10 +24,13 @@ import {
 } from "lucide-react";
 import API from "../../api"; // Adjust the import path as needed
 import { useAuth } from "../../components/AuthContext";
+import RetailerCart from "./retailerCart";
+import { useLocation } from "react-router-dom";
 
 export default function Shelf() {
   // --- STATE ---
   const { user } = useAuth();
+  const [productsLoaded, setProductsLoaded] = useState(false);
   const [productData, setProductData] = useState([]);
   const [categoryStructure, setCategoryStructure] = useState({});
   const [hoveredProduct, setHoveredProduct] = useState(null);
@@ -46,6 +49,8 @@ export default function Shelf() {
   const [isListening, setIsListening] = useState(false);
   const [searchResults, setSearchResults] = useState([]);
   const [showGlobalSearch, setShowGlobalSearch] = useState(false);
+  const [inventoryArr, setInventoryArr] = useState([]); 
+  const [selectedDistributors, setSelectedDistributors] = useState({});
 
   // Distributor modal state
   const [showDistributorModal, setShowDistributorModal] = useState(false);
@@ -115,7 +120,64 @@ export default function Shelf() {
     });
     setOrderQuantities(initialQuantities);
   }, [productData]);
+  
+     useEffect(() => {
+    // Only run if inventoryArr or productData are loaded
+    if (inventoryArr.length === 0 && productData.length === 0) return;
+  
+    const fetchCart = async () => {
+      try {
+        // 1. Fetch from backend
+        const res = await API.get('/cart');
+        let backendCart = Array.isArray(res.data) ? res.data : [];
+              // 3. Enrich cart items with product/variant info
+        const enrichedCart = backendCart.map(item => {
 
+          // Find product in inventoryArr or productData
+          const product =
+            productData.find(p => String(p.id) === String(item.productId))
+          if (!product) return item;
+          console.log("Found product:", product);
+          // Find variant by id or _id
+          const variant =
+            product.variants.find(
+              v => String(v.id) === String(item.variantId) || String(v._id) === String(item.variantId)
+            );
+          if (!variant) return item;
+  
+          return {
+            ...item,
+            id: `${product.id}-${variant.id || variant._id}`,
+            productName: product.name,
+            productIcon: product.icon,
+            variantName: variant.name || "",
+            price: variant.sellingPrice || 0,
+            totalPrice: (variant.sellingPrice || 0) * (item.quantity || 1),
+            distributor: product.distributor || "Unknown Distributor",
+            sku: variant.sku || "",
+            distributorId: product.distributorId || item.distributorId,
+            distributorName: product.distributor || "Unknown Distributor"
+          };
+        });
+        console.log("Enriched cart items:", enrichedCart);
+  
+        setCartItems(enrichedCart);
+      } catch (error) {
+        setCartItems([]);
+      }
+      setProductsLoaded(true);
+    };
+  
+    fetchCart();
+    // eslint-disable-next-line
+  }, [inventoryArr, productData]);
+  
+    useEffect(() => {
+    if (productsLoaded) {
+      API.post('/cart/save', { cartItems });
+    }
+  }, [cartItems, productsLoaded]);
+  
   // --- UTILITY FUNCTIONS ---
   const updateUnit = (productId, variantId, unit) => {
     const key = `${productId}-${variantId}`;
@@ -143,7 +205,10 @@ export default function Shelf() {
           price: variant.sellingPrice,
           quantity,
           unit: orderQuantities[key]?.unit || "box",
-          totalPrice: variant.sellingPrice * quantity
+          totalPrice: variant.sellingPrice * quantity,
+          distributorId: product.distributorId,
+          distributor: product.distributor || "Unknown Distributor",
+          distributorName: product.distributor || "Unknown Distributor"
         };
       }
       return null;
@@ -196,6 +261,7 @@ const addAllToCart = () => {
       if (quantity > 0) {
         itemsToAdd.push({
           id: key,
+          distributorId: product.distributorId,
           productId: product.id,
           variantId: variant.id,
           productName: product.name,
@@ -204,7 +270,9 @@ const addAllToCart = () => {
           price: variant.sellingPrice,
           quantity,
           unit: orderQuantities[key]?.unit || "box",
-          totalPrice: variant.sellingPrice * quantity
+          totalPrice: variant.sellingPrice * quantity,
+          distributor: product.distributor || "Unknown Distributor",
+          distributorName: product.distributor || "Unknown Distributor"
         });
       }
     });
@@ -234,19 +302,33 @@ const addAllToCart = () => {
   const handleCheckout = async () => {
     try {
       setIsLoading(true);
-      const orderData = {
-        items: cartItems.map(item => ({
-          productId: item.productId,
-          variantId: item.variantId,
-          quantity: item.quantity,
-          unit: item.unit
-        })),
-        total: parseFloat(getCartTotal().replace(/,/g, ''))
-      };
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const selectedItems = getSelectedCartItems();
+      // Group by distributor
+      const distributorGroups = {};
+      selectedItems.forEach(item => {
+        const distributor = item.distributorId; // Only use the ID!
+        if (!distributorGroups[distributor]) distributorGroups[distributor] = [];
+        distributorGroups[distributor].push(item);
+      });
+      console.log("Placing order payload:", { distributorGroups });
+
+      // Place an order for each distributor
+      for (const [distributorId, items] of Object.entries(distributorGroups)) {
+        await API.post('/orders/create', {
+          distributorId,
+          items: items.map(item => ({
+            productId: item.productId,
+            variantId: item.variantId,
+            sku: item.sku,
+            quantity: item.quantity,
+            unit: item.unit
+          }))
+        });
+      }
+
       setCartItems([]);
       setShowCart(false);
-      alert('Order placed successfully!');
+      alert('Order(s) placed successfully!');
     } catch (error) {
       console.error('Checkout error:', error);
       alert('Failed to place order. Please try again.');
@@ -370,14 +452,14 @@ const addAllToCart = () => {
   const getCurrentProducts = () => {
     let products;
     if (viewMode === "categories") {
-      products = productData.filter(p =>
+      products = inventoryArr.filter(p =>
         p.category === activeCategory &&
         (!activeSubcategory || p.subcategory === activeSubcategory)
       );
     } else {
       // Group by distributors
       const distributorProducts = {};
-      productData.forEach(product => {
+      inventoryArr.forEach(product => {
         if (!distributorProducts[product.distributor]) {
           distributorProducts[product.distributor] = [];
         }
@@ -453,7 +535,6 @@ const addAllToCart = () => {
       setModalProducts(distributorProductsCache[modalDistributor]);
       return;
     }
-
     // Otherwise, fetch and cache
     setIsLoading(true);
     API.get(`/products/get?distributorId=${modalDistributor}`)
@@ -469,21 +550,50 @@ const addAllToCart = () => {
       .finally(() => setIsLoading(false));
   }, [modalDistributor]);
 
+  const updateCartItemQuantity = (itemId, newQuantity) => {
+  setCartItems(prev =>
+    prev.map(item =>
+      item.id === itemId
+        ? { ...item, quantity: newQuantity, totalPrice: item.price * newQuantity }
+        : item
+    )
+  );
+};
 
   // Fetch inventory variant IDs for quick lookup
   const fetchInventoryVariantIds = async () => {
     try {
       const res = await API.get('/inventory');
-      const inventoryArr = Array.isArray(res.data) ? res.data : (res.data.inventory || []);
+      const arr = Array.isArray(res.data) ? res.data : (res.data.inventory || []);
+      setInventoryArr(arr);
+
+      // Build category structure from inventoryArr
+      const structure = {};
+      arr.forEach(product => {
+        const category = product.category || "Other";
+        const subcategory = product.subcategory || "General";
+        if (!structure[category]) structure[category] = {};
+        if (!structure[category][subcategory]) structure[category][subcategory] = [];
+        structure[category][subcategory].push(product.name);
+      });
+      setCategoryStructure(structure);
+
+      // Set default active category and subcategory if not set
+      const firstCategory = Object.keys(structure)[0] || null;
+      setActiveCategory(firstCategory);
+      setActiveSubcategory(firstCategory ? Object.keys(structure[firstCategory])[0] : null);
+
+      // Build stock map
       const stockMap = {};
-inventoryArr.forEach(item => {
-  // Since variants is an array, iterate through each variant
-  item.variants.forEach(variant => {
-    stockMap[variant._id] = variant.stock || 0;
-  });
-});
-setInventoryStockMap(stockMap);
+      arr.forEach(item => {
+        item.variants.forEach(variant => {
+          stockMap[variant._id] = variant.stock || 0;
+        });
+      });
+      setInventoryStockMap(stockMap);
     } catch {
+      setInventoryArr([]);
+      setCategoryStructure({});
       setInventoryStockMap({});
     }
   };
@@ -523,6 +633,39 @@ setInventoryStockMap(stockMap);
       })
       .catch(() => setDistributorInfo({}));
   }, [productData]);
+
+  // New function to group cart items by distributor
+  const groupCartByDistributor = () => {
+    const groups = {};
+    cartItems.forEach(item => {
+      const distributorId = item.distributorId;
+      if (!distributorId) {
+        console.warn('Cart item missing distributorId:', item);
+        return;
+      }
+      if (!groups[distributorId]) groups[distributorId] = [];
+      groups[distributorId].push(item);
+    });
+    return groups;
+  };
+
+  const getSelectedCartItems = () => {
+    const groups = groupCartByDistributor();
+    let selected = [];
+    Object.entries(groups).forEach(([distributor, items]) => {
+      if (selectedDistributors[distributor] !== false) {
+        selected = selected.concat(items);
+      }
+    });
+    return selected;
+  };
+
+  const location = useLocation();
+
+  useEffect(() => {
+    setShowDistributorModal(false);
+    setModalDistributor(null);
+  }, [location.pathname]);
 
   // --- RENDER ---
   return (
@@ -860,7 +1003,7 @@ setInventoryStockMap(stockMap);
                                                 <div className="flex items-center">
                                                   <button
                                                     onClick={() => updateQuantity(product.id, variant.id, (orderQuantities[`${product.id}-${variant.id}`]?.quantity || 0) - 1)}
-                                                    disabled={variant.stock === 0}
+                                                    
                                                     className="p-1 rounded-l bg-gray-100 hover:bg-gray-200 disabled:opacity-50"
                                                   >
                                                     <Minus className="w-3 h-3" />
@@ -871,12 +1014,12 @@ setInventoryStockMap(stockMap);
                                                     max={variant.stock}
                                                     value={orderQuantities[`${product.id}-${variant.id}`]?.quantity || 0}
                                                     onChange={(e) => updateQuantity(product.id, variant.id, parseInt(e.target.value) || 0)}
-                                                    disabled={variant.stock === 0}
+                                                    
                                                     className="w-10 sm:w-12 px-1 py-1 text-center text-xs border-t border-b"
                                                   />
                                                   <button
                                                     onClick={() => updateQuantity(product.id, variant.id, (orderQuantities[`${product.id}-${variant.id}`]?.quantity || 0) + 1)}
-                                                    disabled={variant.stock === 0}
+                                                    
                                                     className="p-1 rounded-r bg-gray-100 hover:bg-gray-200 disabled:opacity-50"
                                                   >
                                                     <Plus className="w-3 h-3" />
@@ -884,7 +1027,7 @@ setInventoryStockMap(stockMap);
                                                   <select
                                                     value={orderQuantities[`${product.id}-${variant.id}`]?.unit || "box"}
                                                     onChange={(e) => updateUnit(product.id, variant.id, e.target.value)}
-                                                    disabled={variant.stock === 0}
+                                                    
                                                     className="ml-1 sm:ml-2 text-xs border rounded px-2 py-1"
                                                   >
                                                     <option value="box">Box</option>
@@ -958,67 +1101,21 @@ setInventoryStockMap(stockMap);
         </button>
       </div>
 
-      {/* Cart Sidebar */}
-      {showCart && (
-        <div className="fixed inset-y-0 right-0 w-full sm:w-96 bg-white shadow-2xl border-l z-50">
-          <div className="h-full flex flex-col">
-            <div className="p-4 border-b flex justify-between items-center">
-              <h2 className="text-lg font-semibold text-gray-900">Shopping Cart</h2>
-              <button
-                onClick={() => setShowCart(false)}
-                className="p-2 hover:bg-gray-100 rounded-full"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto p-4">
-              {cartItems.length === 0 ? (
-                <p className="text-gray-500 text-center">Your cart is empty</p>
-              ) : (
-                <div className="space-y-4">
-                  {cartItems.map(item => (
-                    <div key={item.id} className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
-                      <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                        {item.productIcon}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h4 className="text-sm font-medium text-gray-900">{item.productName}</h4>
-                        <p className="text-xs text-gray-500">{item.variantName}</p>
-                        <div className="mt-1 flex items-center justify-between">
-                          <span className="text-xs">
-                            {item.quantity} {item.unit}(s) × ₹{item.price.toLocaleString()}
-                          </span>
-                          <span className="text-sm font-medium">₹{item.totalPrice.toLocaleString()}</span>
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => removeFromCart(item.id)}
-                        className="p-1 hover:bg-gray-200 rounded"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-            {cartItems.length > 0 && (
-              <div className="border-t p-4">
-                <div className="flex justify-between items-center mb-4">
-                  <span className="text-gray-600">Total</span>
-                  <span className="text-lg font-semibold">₹{getCartTotal()}</span>
-                </div>
-                <button
-                  onClick={handleCheckout}
-                  className="w-full py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
-                >
-                  Proceed to Checkout
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+      {/* Cart Component */}
+      <RetailerCart 
+        showCart={showCart}
+        setShowCart={setShowCart}
+        cartItems={cartItems}
+        groupCartByDistributor={groupCartByDistributor}
+        updateCartItemQuantity={updateCartItemQuantity}
+        removeFromCart={removeFromCart}
+        distributorInfo={distributorInfo}
+        onOrderPlaced={() => {
+          // Refresh inventory after order is placed
+          fetchInventoryVariantIds();
+          setCartItems([]);
+        }}
+      />
 
       {/* Distributor Modal */}
 {showDistributorModal && (
@@ -1164,7 +1261,7 @@ setInventoryStockMap(stockMap);
         )}
       </div>
       {/* Footer */}
-      <div className="p-4 border-t flex justify-end">
+      <div className="p-4 border-t">
         <button
           onClick={() => {
             // Add all selected variants to cart
@@ -1174,6 +1271,13 @@ setInventoryStockMap(stockMap);
                 const key = `${product.id}-${variant.id}`;
                 const quantity = orderQuantities[key]?.quantity || 0;
                 if (quantity > 0) {
+                  // Robustly assign distributorId
+                  const distributorId =
+                    product.distributorId ||
+                    (productData.find(p => String(p.id) === String(product.id))?.distributorId) ||
+                    modalDistributor ||
+                    undefined;
+
                   itemsToAdd.push({
                     id: key,
                     productId: product.id,
@@ -1184,7 +1288,10 @@ setInventoryStockMap(stockMap);
                     price: variant.sellingPrice,
                     quantity,
                     unit: orderQuantities[key]?.unit || "box",
-                    totalPrice: variant.sellingPrice * quantity
+                    totalPrice: variant.sellingPrice * quantity,
+                    distributorId, // <- always set
+                    distributor: distributorInfo[distributorId]?.companyName || distributorId,
+                    distributorName: distributorInfo[distributorId]?.companyName || distributorId
                   });
                 }
               });
