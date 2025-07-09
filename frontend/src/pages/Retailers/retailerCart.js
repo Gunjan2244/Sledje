@@ -96,7 +96,13 @@ export default function RetailerCart({
         });
       }
       setShowCart(false);
-      if (onOrderPlaced) onOrderPlaced();
+      if (onOrderPlaced) {
+      const selectedDistributorIds = Object.entries(selectedDistributors)
+     .filter(([_, selected]) => selected)
+     .map(([id]) => id);
+      onOrderPlaced(selectedDistributorIds); // pass selected distributor IDs
+    }
+
       
       // Success animation
       const successNotification = document.createElement('div');

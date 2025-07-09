@@ -190,52 +190,76 @@ export default function Shelf() {
     }));
   };
 
-  const addToCart = (product) => {
-    const newItems = product.variants.map(variant => {
-      const key = `${product.id}-${variant.id}`;
-      const quantity = orderQuantities[key]?.quantity || 0;
-      if (quantity > 0) {
-        return {
-          id: key,
-          productId: product.id,
-          variantId: variant.id,
-          productName: product.name,
-          productIcon: product.icon,
-          variantName: variant.name,
-          price: variant.sellingPrice,
-          quantity,
-          unit: orderQuantities[key]?.unit || "box",
-          totalPrice: variant.sellingPrice * quantity,
-          distributorId: product.distributorId,
-          distributor: product.distributor || "Unknown Distributor",
-          distributorName: product.distributor || "Unknown Distributor"
-        };
-      }
-      return null;
-    }).filter(Boolean);
-
-    if (newItems.length === 0) {
-      alert("Please select quantity for at least one variant");
-      return;
-    }
-
-    setCartItems(prev => [...prev, ...newItems]);
-
-    // Reset quantities for this product's variants
-    const resetQuantities = {};
-    product.variants.forEach(variant => {
-      const key = `${product.id}-${variant.id}`;
-      resetQuantities[key] = {
-        ...orderQuantities[key],
-        quantity: 0
+ const addToCart = (product) => {
+  const newItems = product.variants.map(variant => {
+    const key = `${product.id}-${variant.id}`;
+    const quantity = orderQuantities[key]?.quantity || 0;
+    if (quantity > 0) {
+      return {
+        id: key,
+        productId: product.id,
+        variantId: variant.id,
+        productName: product.name,
+        productIcon: product.icon,
+        sku: variant.sku || "",
+        variantName: variant.name,
+        price: variant.sellingPrice,
+        quantity,
+        unit: orderQuantities[key]?.unit || "box",
+        totalPrice: variant.sellingPrice * quantity,
+        distributorId: product.distributorId,
+        distributor: product.distributor || "Unknown Distributor",
+        distributorName: product.distributor || "Unknown Distributor"
       };
+    }
+    return null;
+  }).filter(Boolean);
+
+  if (newItems.length === 0) {
+    alert("Please select quantity for at least one variant");
+    return;
+  }
+
+  setCartItems(prevCart => {
+    const updatedCart = [...prevCart];
+
+    newItems.forEach(newItem => {
+      const existingIndex = updatedCart.findIndex(
+        item => item.productId === newItem.productId && item.variantId === newItem.variantId
+      );
+
+      if (existingIndex !== -1) {
+        const existingItem = updatedCart[existingIndex];
+        const newQuantity = existingItem.quantity + newItem.quantity;
+        updatedCart[existingIndex] = {
+          ...existingItem,
+          quantity: newQuantity,
+          totalPrice: newQuantity * existingItem.price,
+        };
+      } else {
+        updatedCart.push(newItem);
+      }
     });
 
-    setOrderQuantities(prev => ({
-      ...prev,
-      ...resetQuantities
-    }));
-  };
+    return updatedCart;
+  });
+
+  // Reset input quantities
+  const resetQuantities = {};
+  product.variants.forEach(variant => {
+    const key = `${product.id}-${variant.id}`;
+    resetQuantities[key] = {
+      ...orderQuantities[key],
+      quantity: 0
+    };
+  });
+
+  setOrderQuantities(prev => ({
+    ...prev,
+    ...resetQuantities
+  }));
+};
+
 
   const removeFromCart = (itemId) => {
     setCartItems(prev => prev.filter(item => item.id !== itemId));
@@ -262,6 +286,7 @@ const addAllToCart = () => {
         itemsToAdd.push({
           id: key,
           distributorId: product.distributorId,
+          sku: variant.sku || "",
           productId: product.id,
           variantId: variant.id,
           productName: product.name,
@@ -283,19 +308,42 @@ const addAllToCart = () => {
     return;
   }
 
-  setCartItems(prev => [...prev, ...itemsToAdd]);
-  
-  // Reset all quantities
+  setCartItems(prevCart => {
+    const updatedCart = [...prevCart];
+
+    itemsToAdd.forEach(newItem => {
+      const existingIndex = updatedCart.findIndex(
+        item => item.productId === newItem.productId && item.variantId === newItem.variantId
+      );
+
+      if (existingIndex !== -1) {
+        const existingItem = updatedCart[existingIndex];
+        const newQuantity = existingItem.quantity + newItem.quantity;
+        updatedCart[existingIndex] = {
+          ...existingItem,
+          quantity: newQuantity,
+          totalPrice: newQuantity * existingItem.price,
+        };
+      } else {
+        updatedCart.push(newItem);
+      }
+    });
+
+    return updatedCart;
+  });
+
+  // Reset all selected quantities
   const resetQuantities = {};
   Object.keys(orderQuantities).forEach(key => {
-    resetQuantities[key] = {
-      ...orderQuantities[key],
-      quantity: 0
-    };
+    resetQuantities[key] = { ...orderQuantities[key], quantity: 0 };
   });
-  
-  setOrderQuantities(resetQuantities);
+
+  setOrderQuantities(prev => ({
+    ...prev,
+    ...resetQuantities
+  }));
 };
+
 
 // Add this JSX right before the closing </div> of the main container
 // (before the Cart Sidebar)
@@ -410,7 +458,6 @@ const addAllToCart = () => {
       />
     );
   };
-
   const getStockStatus = (variants) => {
     const totalStock = variants.reduce((sum, v) => sum + v.stock, 0);
     const hasOutOfStock = variants.some(v => v.stock === 0);
@@ -690,9 +737,9 @@ const addAllToCart = () => {
           {currentProducts.length} products
         </span>
       </div>
-      <div className="text-xl text-gray-600 mb-4  text-left pl-16 mb-4 font-eudoxus w-full pr-16">
+      {/* <div className="text-xl text-gray-600 mb-4  text-left pl-16 mb-4 font-eudoxus w-full pr-16">
               123, Main Bazaar Road, Connaught Place, New Delhi, 110001
-      </div>
+      </div> */}
      
     </div>
 
@@ -1091,12 +1138,22 @@ const addAllToCart = () => {
       <div className="fixed bottom-4 right-2 sm:bottom-6 sm:right-6 z-40">
         <button
           onClick={addAllToCart}
+          className="flex items-center gap-2 px-4 py-2 bg-white text-blue-700 font-semibold rounded-lg shadow hover:bg-blue-50 transition"
+        >
+        
+          <span className="hidden sm:inline">Add All to </span>
+          <span className="ml-2 bg-white text-blue-600 text-xs px-2 py-1 rounded-full">
+            {Object.values(orderQuantities).reduce((sum, item) => sum + (item.quantity || 0), 0)}
+          </span>
+        </button>
+        <button
+          onClick={() => setShowCart(true)}
           className="flex items-center space-x-2 px-4 sm:px-6 py-2 sm:py-3 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-colors font-medium"
         >
           <ShoppingCart className="w-5 h-5" />
-          <span className="hidden sm:inline">Add All to Cart</span>
-          <span className="ml-2 bg-white text-blue-600 text-xs px-2 py-1 rounded-full">
-            {Object.values(orderQuantities).reduce((sum, item) => sum + (item.quantity || 0), 0)}
+          <span className="hidden sm:inline">Cart</span>
+          <span className="ml-2 bg-blue-600 text-white text-xs px-2 py-1 rounded-full">
+            {cartItems.length}
           </span>
         </button>
       </div>
@@ -1110,11 +1167,12 @@ const addAllToCart = () => {
         updateCartItemQuantity={updateCartItemQuantity}
         removeFromCart={removeFromCart}
         distributorInfo={distributorInfo}
-        onOrderPlaced={() => {
-          // Refresh inventory after order is placed
-          fetchInventoryVariantIds();
-          setCartItems([]);
-        }}
+        onOrderPlaced={(selectedDistributorIds) => {
+        fetchInventoryVariantIds();
+        setCartItems(prev =>
+          prev.filter(item => !selectedDistributorIds.includes(item.distributorId))
+        );
+      }}
       />
 
       {/* Distributor Modal */}
