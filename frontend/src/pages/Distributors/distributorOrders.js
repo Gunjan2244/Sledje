@@ -21,12 +21,15 @@ import {
   Check,
   X,
   FileText,
-  Building
+  Building,
+  Plus,
+  Minus
 } from 'lucide-react';
 import API from "../../api"; // Adjust path as needed
 
 const DistributorOrderManagement = () => {
   const [orders, setOrders] = useState([]);
+  const [toast, setToast] = useState(null);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [activeTab, setActiveTab] = useState('pending');
   const [searchTerm, setSearchTerm] = useState('');
@@ -34,11 +37,10 @@ const DistributorOrderManagement = () => {
   const [actionType, setActionType] = useState(''); // 'accept', 'reject', 'modify'
   const [loading, setLoading] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
-  const [modifications, setModifications] = useState([]);
+  const [modifiedItems, setModifiedItems] = useState([]);
+  const [modificationNotes, setModificationNotes] = useState('');
 
-  // Mock data for demonstration
- 
-    useEffect(() => {
+  useEffect(() => {
     const fetchOrders = async () => {
       setLoading(true);
       try {
@@ -52,8 +54,6 @@ const DistributorOrderManagement = () => {
     fetchOrders();
   }, []);
 
-
-
   const getStatusIcon = (status) => {
     const iconProps = { size: 20 };
     switch (status) {
@@ -65,6 +65,8 @@ const DistributorOrderManagement = () => {
         return <CheckCircle {...iconProps} className="text-green-500" />;
       case 'cancelled':
         return <XCircle {...iconProps} className="text-red-500" />;
+      case 'modified':
+        return <Edit3 {...iconProps} className="text-orange-500" />;
       default:
         return <Clock {...iconProps} className="text-gray-500" />;
     }
@@ -80,6 +82,8 @@ const DistributorOrderManagement = () => {
         return 'bg-green-100 text-green-800 border-green-200';
       case 'cancelled':
         return 'bg-red-100 text-red-800 border-red-200';
+      case 'modified':
+        return 'bg-orange-100 text-orange-800 border-orange-200';
       default:
         return 'bg-gray-100 text-gray-800 border-gray-200';
     }
@@ -92,7 +96,6 @@ const DistributorOrderManagement = () => {
     return 'low';
   };
   
-  
   const filteredOrders = orders.filter(order => {
     const orderNumber = order.orderNumber || "";
     const retailerName = (order.retailer && order.retailer.name) ? order.retailer.name : "";
@@ -103,42 +106,211 @@ const DistributorOrderManagement = () => {
     return matchesSearch && matchesTab;
   });
 
- const handleOrderAction = async (order, action) => {
-  setLoading(true);
-  try {
-    const res = await API.get(`/orders/distributor/orders/${order.id}`);
-    setSelectedOrder(res.data.data);
-    setActionType(action);
-    setShowOrderModal(true);
-  } catch (error) {
-    alert("Failed to fetch order details");
-  }
-  setLoading(false);
-};
-
-    const processOrder = async () => {
+  const handleOrderAction = async (order, action) => {
     setLoading(true);
     try {
-      if (actionType === 'accept') {
-        await API.put(`/distributor/orders/${selectedOrder.id}/process`, { action: 'accept' });
-      } else if (actionType === 'reject') {
-        await API.put(`/distributor/orders/${selectedOrder.id}/process`, { action: 'reject', rejectionReason });
-      } else if (actionType === 'modify') {
-        await API.put(`/distributor/orders/${selectedOrder.id}/process`, { action: 'modify', modifications });
-      } else if (actionType === 'complete') {
-        await API.put(`/distributor/orders/${selectedOrder.id}/status`, { status: 'completed' });
+      const res = await API.get(`/orders/distributor/orders/${order.id}`);
+      setSelectedOrder(res.data.data);
+      
+      // Initialize modified items for modification action
+      if (action === 'modify') {
+        setModifiedItems(res.data.data.items.map(item => ({
+          ...item,
+          originalQuantity: item.quantity,
+          newQuantity: item.quantity,
+          isModified: false
+        })));
+        setModificationNotes('');
       }
-      // Refresh orders after action
-      const res = await API.get('/distributor/orders');
-      setOrders(res.data.data || []);
-      setShowOrderModal(false);
-      setRejectionReason('');
+
+      setActionType(action);
+      setShowOrderModal(true);
     } catch (error) {
-      alert(error.response?.data?.message || "Action failed");
+      setToast({
+        message: "Failed to fetch order details",
+        type: 'error'
+      });
     }
     setLoading(false);
   };
-  
+
+  const handleQuantityChange = (itemIndex, newQuantity) => {
+    setModifiedItems(prev => 
+      prev.map((item, index) => {
+        if (index === itemIndex) {
+          const quantity = Math.max(0, parseInt(newQuantity) || 0);
+          return {
+            ...item,
+            newQuantity: quantity,
+            isModified: quantity !== item.originalQuantity
+          };
+        }
+        return item;
+      })
+    );
+  };
+
+  const calculateModifiedTotal = () => {
+    return modifiedItems.reduce((sum, item) => {
+      return sum + (item.newQuantity * item.variantSellingPrice);
+    }, 0);
+  };
+
+  const getModificationSummary = () => {
+    const changedItems = modifiedItems.filter(item => item.isModified);
+    const removedItems = modifiedItems.filter(item => item.newQuantity === 0);
+    const quantityChanges = changedItems.filter(item => item.newQuantity > 0);
+    
+    return {
+      hasChanges: changedItems.length > 0,
+      changedItems,
+      removedItems,
+      quantityChanges,
+      originalTotal: selectedOrder.totalAmount,
+      newTotal: calculateModifiedTotal(),
+      totalDifference: calculateModifiedTotal() - selectedOrder.totalAmount
+    };
+  };
+
+  const processOrder = async () => {
+    setLoading(true);
+    try {
+      let successMessage = '';
+      let apiData = {};
+      
+      if (actionType === 'accept') {
+        apiData = { action: 'accept' };
+        successMessage = `Order from ${selectedOrder.retailer.businessName} has been accepted successfully!`;
+      } else if (actionType === 'reject') {
+        if (!rejectionReason.trim()) {
+          setToast({
+            message: "Please provide a rejection reason",
+            type: 'error'
+          });
+          setLoading(false);
+          return;
+        }
+        apiData = { action: 'reject', rejectionReason };
+        successMessage = `Order from ${selectedOrder.retailer.businessName} has been rejected.`;
+      } else if (actionType === 'modify') {
+        const summary = getModificationSummary();
+        if (!summary.hasChanges) {
+          setToast({
+            message: "No modifications detected",
+            type: 'error'
+          });
+          setLoading(false);
+          return;
+        }
+        
+        // Prepare modification data
+        const modifications = {
+          items: modifiedItems.map(item => ({
+            productId: item.productId,
+            variantId: item.variantId,
+            originalQuantity: item.originalQuantity,
+            newQuantity: item.newQuantity,
+            isModified: item.isModified
+          })),
+          notes: modificationNotes,
+        
+        };
+        
+        apiData = { action: 'modify', modifications };
+        successMessage = `Modification request sent for order to ${selectedOrder.retailer.businessName}.`;
+      } else if (actionType === 'complete') {
+        await API.put(`orders/distributor/orders/${selectedOrder._id}/status`, { status: 'completed' });
+        successMessage = `Order from ${selectedOrder.retailer.businessName} marked as completed!`;
+      }
+      
+      if (actionType !== 'complete') {
+        await API.put(`orders/distributor/orders/${selectedOrder._id}/process`, apiData);
+      }
+      
+      // Refresh orders after action
+      const res = await API.get('orders/distributor/order');
+      setOrders(res.data.data || []);
+      setShowOrderModal(false);
+      setRejectionReason('');
+      setModifiedItems([]);
+      setModificationNotes('');
+      
+      // Show success toast
+      setToast({ message: successMessage, type: 'success' });
+      
+    } catch (error) {
+      const errorMessage = error.response?.data?.message || "Action failed. Please try again.";
+      setToast({ message: errorMessage, type: 'error' });
+    }
+    setLoading(false);
+  };
+
+  const Toast = ({ message, type, onClose }) => {
+    const [isVisible, setIsVisible] = useState(true);
+
+    useEffect(() => {
+      const timer = setTimeout(() => {
+        setIsVisible(false);
+        setTimeout(onClose, 300);
+      }, 4000);
+      return () => clearTimeout(timer);
+    }, [onClose]);
+
+    const handleClose = () => {
+      setIsVisible(false);
+      setTimeout(onClose, 300);
+    };
+
+    return (
+      <div className={`fixed top-6 right-6 z-50 transition-all duration-300 transform ${
+        isVisible ? 'translate-y-0 opacity-100' : '-translate-y-2 opacity-0'
+      }`}>
+        <div className={`relative flex items-center space-x-3 px-6 py-4 rounded-xl shadow-2xl backdrop-blur-sm border-l-4 min-w-[320px] ${
+          type === 'success' 
+            ? 'bg-white/95 border-l-green-500 shadow-green-500/20' 
+            : type === 'error' 
+            ? 'bg-white/95 border-l-red-500 shadow-red-500/20' 
+            : 'bg-white/95 border-l-blue-500 shadow-blue-500/20'
+        }`}>
+          <div className={`flex-shrink-0 p-2 rounded-full ${
+            type === 'success' 
+              ? 'bg-green-100 shadow-green-200/50' 
+              : type === 'error' 
+              ? 'bg-red-100 shadow-red-200/50' 
+              : 'bg-blue-100 shadow-blue-200/50'
+          }`}>
+            {type === 'success' && <CheckCircle className="w-5 h-5 text-green-600" />}
+            {type === 'error' && <XCircle className="w-5 h-5 text-red-600" />}
+            {type === 'info' && <AlertTriangle className="w-5 h-5 text-blue-600" />}
+          </div>
+          
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-gray-900 leading-relaxed">
+              {message}
+            </p>
+          </div>
+          
+          <button
+            onClick={handleClose}
+            className="flex-shrink-0 p-1.5 rounded-full hover:bg-gray-100 transition-colors duration-200 group"
+            aria-label="Close notification"
+          >
+            <X className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
+          </button>
+          
+          <div className="absolute bottom-0 left-0 h-1 bg-gray-200 rounded-b-xl overflow-hidden">
+            <div className={`h-full rounded-b-xl transition-all duration-[4000ms] ease-linear ${
+              type === 'success' 
+                ? 'bg-green-500' 
+                : type === 'error' 
+                ? 'bg-red-500' 
+                : 'bg-blue-500'
+            } ${isVisible ? 'w-0' : 'w-full'}`}></div>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   const OrderCard = ({ order }) => {
     const urgency = getUrgencyLevel(order.createdAt);
@@ -151,7 +323,7 @@ const DistributorOrderManagement = () => {
               <ShoppingCart className="w-5 h-5 text-indigo-600" />
             </div>
             <div>
-              <h3 className="font-semibold text-gray-900">{order.retailer.name}</h3>
+              <h3 className="font-semibold text-gray-900">{order.retailer.businessName}</h3>
               <p className="text-sm text-gray-500">{order.orderNumber}</p>
             </div>
           </div>
@@ -261,6 +433,8 @@ const DistributorOrderManagement = () => {
   const OrderModal = () => {
     if (!selectedOrder) return null;
 
+    const modificationSummary = actionType === 'modify' ? getModificationSummary() : null;
+
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
         <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
@@ -334,6 +508,32 @@ const DistributorOrderManagement = () => {
               </div>
             </div>
 
+            {/* Modification Summary */}
+            {actionType === 'modify' && modificationSummary && (
+              <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-6">
+                <h3 className="font-semibold text-orange-900 mb-2">Modification Summary</h3>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-sm text-orange-800">Original Total:</span>
+                    <span className="text-sm font-medium text-orange-900">₹{modificationSummary.originalTotal.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-orange-800">New Total:</span>
+                    <span className="text-sm font-medium text-orange-900">₹{modificationSummary.newTotal.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-orange-800">Difference:</span>
+                    <span className={`text-sm font-medium ${modificationSummary.totalDifference >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                      {modificationSummary.totalDifference >= 0 ? '+' : ''}₹{modificationSummary.totalDifference.toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="text-sm text-orange-800">
+                    Items Modified: {modificationSummary.changedItems.length}
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Order Items */}
             <div className="mb-6">
               <h3 className="font-semibold text-gray-900 mb-4">Order Items</h3>
@@ -350,37 +550,58 @@ const DistributorOrderManagement = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {selectedOrder.items.map((item, index) => (
-                      <tr key={index} className="border-b border-gray-100">
+                    {(actionType === 'modify' ? modifiedItems : selectedOrder.items).map((item, index) => (
+                      <tr key={index} className={`border-b border-gray-100 ${actionType === 'modify' && item.isModified ? 'bg-orange-50' : ''}`}>
                         <td className="py-3 px-4">
                           <div>
-                            <div className="font-medium text-gray-900">{item.productName}</div>
+                            <div className="font-medium text-gray-900">{item.productName}-{item.variantName}</div>
                             <div className="text-sm text-gray-500">per {item.unit}</div>
                           </div>
                         </td>
-                        <td className="py-3 px-4 text-sm text-gray-600">{item.sku}</td>
+                        <td className="py-3 px-4 text-sm text-gray-600">{item.variantSku}</td>
                         <td className="py-3 px-4 text-right">
                           {actionType === 'modify' ? (
-                            <input
-                              type="number"
-                              defaultValue={item.quantity}
-                              className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-                            />
+                            <div className="flex items-center justify-end space-x-2">
+                              <button
+                                onClick={() => handleQuantityChange(index, item.newQuantity - 1)}
+                                className="p-1 hover:bg-gray-100 rounded"
+                                disabled={item.newQuantity <= 0}
+                              >
+                                <Minus className="w-4 h-4" />
+                              </button>
+                              <input
+                                type="number"
+                                value={item.newQuantity}
+                                onChange={(e) => handleQuantityChange(index, e.target.value)}
+                                className="w-16 px-2 py-1 text-sm border border-gray-300 rounded text-center focus:ring-2 focus:ring-orange-500"
+                                min="0"
+                                max={item.variantStock}
+                              />
+                              <button
+                                onClick={() => handleQuantityChange(index, item.newQuantity + 1)}
+                                className="p-1 hover:bg-gray-100 rounded"
+                                disabled={item.newQuantity >= item.variantStock}
+                              >
+                                <Plus className="w-4 h-4" />
+                              </button>
+                            </div>
                           ) : (
                             <span className="font-medium">{item.quantity}</span>
                           )}
                         </td>
-                        <td className="py-3 px-4 text-right">₹{item.price}</td>
+                        <td className="py-3 px-4 text-right">₹{item.variantSellingPrice}</td>
                         <td className="py-3 px-4 text-right">
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            item.stock < item.quantity ? 'bg-red-100 text-red-800' : 
-                            item.stock < item.quantity * 2 ? 'bg-yellow-100 text-yellow-800' : 
+                            item.variantStock < (actionType === 'modify' ? item.newQuantity : item.quantity) ? 'bg-red-100 text-red-800' : 
+                            item.variantStock < (actionType === 'modify' ? item.newQuantity : item.quantity) * 2 ? 'bg-yellow-100 text-yellow-800' : 
                             'bg-green-100 text-green-800'
                           }`}>
-                            {item.stock} available
+                            {item.variantStock} available
                           </span>
                         </td>
-                        <td className="py-3 px-4 text-right font-medium">₹{(item.quantity * item.price).toLocaleString()}</td>
+                        <td className="py-3 px-4 text-right font-medium">
+                          ₹{((actionType === 'modify' ? item.newQuantity : item.quantity) * item.variantSellingPrice).toLocaleString()}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -414,6 +635,7 @@ const DistributorOrderManagement = () => {
               </div>
             )}
 
+           
             {actionType === 'modify' && (
               <div className="mb-6">
                 <h3 className="font-semibold text-gray-900 mb-2">Modification Notes</h3>
@@ -519,77 +741,46 @@ const DistributorOrderManagement = () => {
         </div>
 
         {/* Order Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center">
-              <div className="p-3 bg-yellow-100 rounded-lg">
-                <Clock className="w-6 h-6 text-yellow-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm text-gray-600">Pending Orders</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {orders.filter(o => o.status === 'pending').length}
-                </p>
-              </div>
-            </div>
+       
+
+        {loading && (
+          <div className="flex items-center justify-center py-12">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
           </div>
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center">
-              <div className="p-3 bg-blue-100 rounded-lg">
-                <Truck className="w-6 h-6 text-blue-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm text-gray-600">Processing</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {orders.filter(o => o.status === 'processing').length}
-                </p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center">
-              <div className="p-3 bg-green-100 rounded-lg">
-                <CheckCircle className="w-6 h-6 text-green-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm text-gray-600">Completed</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {orders.filter(o => o.status === 'completed').length}
-                </p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center">
-              
-              <div className="ml-4">
-                <p className="text-sm text-gray-600">Revenue Today</p>
-                <p className="text-2xl font-bold text-gray-900">₹{orders.reduce((sum, o) => sum + o.totalAmount, 0).toLocaleString()}</p>
-              </div>
-            </div>
-          </div>
-        </div>
+       )}
 
         {/* Orders List */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {filteredOrders.map(order => (
-            <OrderCard key={order.id} order={order} />
-          ))}
-        </div>
-
-        {filteredOrders.length === 0 && (
-          <div className="text-center py-12">
-            <ShoppingCart className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No orders found</h3>
-            <p className="text-gray-500">
-              {searchTerm ? 'Try adjusting your search terms' : `No ${activeTab} orders at the moment`}
-            </p>
+        {!loading && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {filteredOrders.map(order => (
+              <OrderCard key={order.id} order={order} />
+            ))}
           </div>
         )}
+  
+
+        {/* No orders message */}
+        {!loading && filteredOrders.length === 0 && (
+         <div className="text-center py-12">
+        <ShoppingCart className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+        <h3 className="text-lg font-medium text-gray-900 mb-2">No orders found</h3>
+        <p className="text-gray-500">
+        {searchTerm ? 'Try adjusting your search terms' : `No ${activeTab} orders at the moment`}
+        </p>
+        </div>
+        )}
+       
       </div>
 
       {/* Modal */}
       {showOrderModal && <OrderModal />}
+      {toast && (
+     <Toast
+       message={toast.message}
+       type={toast.type}
+       onClose={() => setToast(null)}
+     />
+)}
     </div>
   );
 };

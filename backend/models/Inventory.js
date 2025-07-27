@@ -41,6 +41,7 @@ const InventorySchema = new mongoose.Schema({
   lastUpdated: { 
     type: Date, 
     default: Date.now 
+  
   }
 });
 

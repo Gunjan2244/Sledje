@@ -440,6 +440,7 @@ const addAllToCart = () => {
   };
 
   const navigateToProduct = (product) => {
+    console.log("Navigating to product:", product);
     setActiveCategory(product.category);
     setActiveSubcategory(product.subcategory);
     setShowGlobalSearch(false);
@@ -613,6 +614,7 @@ const addAllToCart = () => {
       const res = await API.get('/inventory');
       const arr = Array.isArray(res.data) ? res.data : (res.data.inventory || []);
       setInventoryArr(arr);
+     
 
       // Build category structure from inventoryArr
       const structure = {};
@@ -979,15 +981,16 @@ const addAllToCart = () => {
                     </tr>
                   ) : (
                     currentProducts.map(product => {
-                      const stockInfo = getStockStatus(product.variants);
-                      const isHovered = hoveredProduct === product.id;
-                      return (
-                        <tr
-                          key={product.id}
-                          className="hover:bg-gray-50 transition-colors"
-                          onMouseEnter={() => setHoveredProduct(product.id)}
-                          onMouseLeave={() => setHoveredProduct(null)}
-                        >
+                    const stockInfo = getStockStatus(product.variants, product.id); // Pass product.id
+                    const isHovered = hoveredProduct === product.id;
+  
+                    return (
+                      <tr
+                        key={product.id}
+                        className="hover:bg-gray-50 transition-colors"
+                        onMouseEnter={() => setHoveredProduct(product.id)}
+                        onMouseLeave={() => setHoveredProduct(null)}
+                      >
                           <td className="p-2 sm:p-4">
                             <div className="flex flex-col">
                               <div className="flex items-center space-x-2 sm:space-x-3">
@@ -1019,23 +1022,36 @@ const addAllToCart = () => {
                                         </tr>
                                       </thead>
                                       <tbody className="divide-y divide-gray-100">
-                                        {product.variants.map(variant => (
-                                          <tr key={variant.id} className="hover:bg-gray-50">
-                                            <td className="px-2 py-1 sm:px-3 sm:py-2">
-                                              <span className="text-xs font-medium text-gray-900">{variant.name}</span>
-                                            </td>
-                                            <td className="px-2 py-1 sm:px-3 sm:py-2">
+                                        {product.variants.map(variant => {
+                                       // Check if this specific variant is in cart
+                                        const cartItem = cartItems.find(item => 
+                                        String(item.productId) === String(product.id) && 
+                                       (String(item.variantId) === String(variant.id) || String(item.variantId) === String(variant._id))
+                                       );
+  
+                                       return (
+                                        <tr key={variant.id} className="hover:bg-gray-50">
+                                        <td className="px-2 py-1 sm:px-3 sm:py-2">
+                                        <span className="text-xs font-medium text-gray-900">{variant.name}</span>
+                                         </td>
+                                         <td className="px-2 py-1 sm:px-3 sm:py-2">
                                               <span className="text-xs text-gray-500">{variant.sku}</span>
-                                            </td>
-                                            <td className="px-2 py-1 sm:px-3 sm:py-2 text-right">
-                                              <span className={`inline-flex px-2 py-1 text-xs rounded-full ${
-                                                variant.stock === 0 ? 'bg-red-100 text-red-700' :
-                                                variant.stock <= 5 ? 'bg-yellow-100 text-yellow-700' :
-                                                'bg-green-100 text-green-700'
-                                              }`}>
-                                                {variant.stock} units
-                                              </span>
-                                            </td>
+                                         </td>
+                                          <td className="px-2 py-1 sm:px-3 sm:py-2 text-right">
+                                        {cartItem ? (
+                                         <span className="inline-flex px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-700">
+                                         In Cart: {cartItem.quantity}
+                                        </span>
+                                         ) : (
+                                        <span className={`inline-flex px-2 py-1 text-xs rounded-full ${
+                                        variant.stock === 0 ? 'bg-red-100 text-red-700' :
+                                        variant.stock <= 5 ? 'bg-yellow-100 text-yellow-700' :
+                                        'bg-green-100 text-green-700'
+                                         }`}>
+                                         {variant.stock} units
+                                       </span>
+                                       )}
+                                       </td>
                                             <td className="px-2 py-1 sm:px-3 sm:py-2 text-right">
                                               <span className="text-xs text-gray-900">₹{variant.costPrice.toLocaleString()}</span>
                                             </td>
@@ -1085,7 +1101,8 @@ const addAllToCart = () => {
                                               </div>
                                             </td>
                                           </tr>
-                                        ))}
+                                          );
+                                        })}
                                       </tbody>
                                     </table>
                                   </div>
@@ -1114,18 +1131,30 @@ const addAllToCart = () => {
                               </span>
                             </div>
                           </td>
-                          <td className="p-2 sm:p-4 text-right">
-                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                              stockInfo.status === 'good' ? 'bg-green-100 text-green-800' :
-                              stockInfo.status === 'low' ? 'bg-yellow-100 text-yellow-800' :
-                              'bg-red-100 text-red-800'
-                            }`}>
-                              {stockInfo.text}
-                            </span>
+                           <td className="p-2 sm:p-4 text-right">
+                           <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                           stockInfo.status === 'good' ? 'bg-green-100 text-green-800' :
+                           stockInfo.status === 'low' ? 'bg-yellow-100 text-yellow-800' :
+                           stockInfo.status === 'out' ? 'bg-red-100 text-red-800' :
+                           stockInfo.status === 'in-cart' ? 'bg-blue-100 text-blue-800' : // New cart status
+                          'bg-gray-100 text-gray-800'
+                          }`}>
+                          {stockInfo.text}
+                          </span>
+                           {/* Optional: Show cart details on hover */}
+                          {stockInfo.status === 'in-cart' && (
+                           <div className="text-xs text-gray-500 mt-1">
+                          {stockInfo.cartItems.map(item => (
+                              <div key={item.id} className="truncate">
+                                {item.variantName}: {item.quantity}
+                              </div>
+                            ))}
+                          </div>
+                        )}
                           </td>
-                        </tr>
-                      );
-                    })
+                       </tr>
+                      );  // Closing the table row  
+                   })
                   )}
                 </tbody>
               </table>
@@ -1342,6 +1371,7 @@ const addAllToCart = () => {
                     variantId: variant.id,
                     productName: product.name,
                     productIcon: product.icon,
+                    sku: variant.sku,
                     variantName: variant.name,
                     price: variant.sellingPrice,
                     quantity,
@@ -1358,7 +1388,29 @@ const addAllToCart = () => {
               alert("Please select quantity for at least one variant");
               return;
             }
-            setCartItems(prev => [...prev, ...itemsToAdd]);
+            setCartItems(prevCart => {
+    const updatedCart = [...prevCart];
+
+    itemsToAdd.forEach(newItem => {
+      const existingIndex = updatedCart.findIndex(
+        item => item.productId === newItem.productId && item.variantId === newItem.variantId
+      );
+
+      if (existingIndex !== -1) {
+        const existingItem = updatedCart[existingIndex];
+        const newQuantity = existingItem.quantity + newItem.quantity;
+        updatedCart[existingIndex] = {
+          ...existingItem,
+          quantity: newQuantity,
+          totalPrice: newQuantity * existingItem.price,
+        };
+      } else {
+        updatedCart.push(newItem);
+      }
+    });
+
+    return updatedCart;
+  });
             // Reset quantities
             const resetQuantities = {};
             modalProducts.forEach(product => {

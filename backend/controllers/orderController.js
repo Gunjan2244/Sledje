@@ -63,11 +63,11 @@ export const createOrderRequest = async (req, res) => {
   }
 };
 
-// DISTRIBUTOR SIDE - Accept/Reject Order
+// DISTRIBUTOR SIDE - Accept/Reject Ordernpm start
 export const processOrderRequest = async (req, res) => {
   try {
     const { orderId } = req.params;
-    const { action, rejectionReason, modifications } = req.body; // action: 'accept' | 'reject' | 'modify'
+    const { action, rejectionReason, modifications } = req.body;
     const distributorId = req.user.id;
 
     const order = await Order.findOne({ 
@@ -86,11 +86,14 @@ export const processOrderRequest = async (req, res) => {
     if (action === 'accept') {
       // Validate stock and update final prices at acceptance time
       const finalItems = await validateStockAndUpdatePrices(order.items, distributorId);
-      const finalTotal = finalItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
       
+      // Calculate final total using the validated items
+      const finalTotal = finalItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
       // Reserve stock
       await reserveStock(finalItems);
 
+      // Update order with plain objects
       order.items = finalItems;
       order.totalAmount = finalTotal;
       order.status = 'processing';
@@ -151,16 +154,22 @@ export const processOrderRequest = async (req, res) => {
     } else if (action === 'modify') {
       // Handle partial fulfillment or quantity modifications
       const modifiedItems = await applyModifications(order.items, modifications);
+      
+      console.log("Applying modifications:", modifications);
+      console.log("Original items:", order.items);
+      console.log("Modified items:", modifiedItems);
+      
       const modifiedTotal = modifiedItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
       
       order.items = modifiedItems;
       order.totalAmount = modifiedTotal;
+      console.log("Modified total amount:", modifiedTotal);
       order.status = 'modified';
       order.notes = order.notes ? `${order.notes}\n\nOrder modified by distributor` : 'Order modified by distributor';
       
       await order.save();
 
-      // Notify retailer of modifications (they need to re-approve)
+      // Enhanced notification with modification details
       await createNotification({
         recipientId: order.retailerId,
         recipientType: 'Retailer',
@@ -170,7 +179,10 @@ export const processOrderRequest = async (req, res) => {
         data: { 
           orderNumber: order.orderNumber,
           modifiedTotal,
-          modifications 
+          originalTotal: modifications.summary?.originalTotal || 0,
+          totalDifference: modifications.summary?.totalDifference || 0,
+          changedItems: modifications.summary?.changedItems || [],
+          removedItems: modifications.summary?.removedItems || []
         }
       });
 
@@ -181,7 +193,9 @@ export const processOrderRequest = async (req, res) => {
           orderId: order._id,
           status: order.status,
           modifiedTotal,
-          modifications
+          originalTotal: modifications.summary?.originalTotal || 0,
+          totalDifference: modifications.summary?.totalDifference || 0,
+          modifications: modifications.summary
         }
       });
     }
@@ -191,6 +205,118 @@ export const processOrderRequest = async (req, res) => {
       success: false,
       message: error.message
     });
+  }
+};
+
+// IMPROVED: Apply distributor modifications
+// IMPROVED: Apply distributor modifications with price validation
+const applyModifications = async (originalItems, modifications) => {
+  try {
+    // Convert to plain objects first
+    const modifiedItems = originalItems.map(item => 
+      item.toObject ? item.toObject() : { ...item }
+    );
+    console.log("Original items:", modifiedItems);
+    console.log("Modifications received:", modifications);
+
+    // Validate the modifications structure
+    if (!modifications || !modifications.items || !Array.isArray(modifications.items)) {
+      throw new Error('Invalid modifications structure');
+    }
+
+    // Apply modifications based on the data structure you're sending
+    for (const mod of modifications.items) {
+      // Find item by productId and variantId (more reliable than SKU)
+      const itemIndex = modifiedItems.findIndex(item => 
+        item.productId?.toString() === mod.productId?.toString() ||
+        item.sku === mod.sku // fallback to SKU matching
+      );
+
+      if (itemIndex === -1) {
+        console.warn(`Item not found for modification:`, mod);
+        continue;
+      }
+
+      // Handle item removal first
+      if (mod.remove === true || mod.newQuantity === 0) {
+        modifiedItems.splice(itemIndex, 1);
+        continue;
+      }
+
+      // Apply quantity changes
+      if (mod.newQuantity !== undefined) {
+        // Validate stock availability and get current price for the new quantity
+        const product = await Product.findOne({ 
+          _id: mod.productId,
+          'variants.sku': modifiedItems[itemIndex].sku 
+        });
+
+        if (product) {
+          const variant = product.variants.find(v => v.sku === modifiedItems[itemIndex].sku);
+          if (variant) {
+            // Check stock availability
+            if (variant.stock < mod.newQuantity) {
+              throw new Error(`Insufficient stock for ${modifiedItems[itemIndex].productName}. Available: ${variant.stock}, Requested: ${mod.newQuantity}`);
+            }
+            
+            // Update price to current selling price
+            modifiedItems[itemIndex].price = variant.sellingPrice;
+          } else {
+            throw new Error(`Variant not found for product ${modifiedItems[itemIndex].productName}`);
+          }
+        } else {
+          throw new Error(`Product not found for ${modifiedItems[itemIndex].productName}`);
+        }
+
+        modifiedItems[itemIndex].quantity = mod.newQuantity;
+        modifiedItems[itemIndex].Ordered = mod.newQuantity;
+      }
+    }
+
+    // Filter out items with zero quantity
+    const finalItems = modifiedItems.filter(item => item.quantity > 0);
+
+    if (finalItems.length === 0) {
+      throw new Error('Cannot process order with no items');
+    }
+
+    // CRITICAL: Ensure all remaining items have valid prices
+    for (const item of finalItems) {
+      if (!item.price || item.price <= 0) {
+        // Fetch current price if missing or invalid
+        const product = await Product.findOne({ 
+          _id: item.productId,
+          'variants.sku': item.sku 
+        });
+
+        if (product) {
+          const variant = product.variants.find(v => v.sku === item.sku);
+          if (variant && variant.sellingPrice > 0) {
+            item.price = variant.sellingPrice;
+            console.log(`Updated price for ${item.productName}: ${item.price}`);
+          } else {
+            throw new Error(`Valid price not found for ${item.productName}`);
+          }
+        } else {
+          throw new Error(`Product not found for price update: ${item.productName}`);
+        }
+      }
+    }
+
+    // Log final items with prices for debugging
+    console.log("Final items with prices:", finalItems.map(item => ({
+      productName: item.productName,
+      sku: item.sku,
+      quantity: item.quantity,
+      price: item.price,
+      total: item.price * item.quantity
+    })));
+
+    return finalItems;
+
+  } catch (error) {
+    console.error('Error applying modifications:', error);
+    throw error;
   }
 };
 
@@ -347,24 +473,38 @@ const validateStockAndUpdatePrices = async (items, distributorId) => {
   const finalItems = [];
   
   for (let item of items) {
+    // Convert Mongoose document to plain object first
+    const plainItem = item.toObject ? item.toObject() : item;
+    
     const product = await Product.findOne({ 
       distributorId,
-      'variants.sku': item.sku 
+      'variants.sku': plainItem.sku 
     });
     
-    const variant = product.variants.find(v => v.sku === item.sku);
-    
-    if (variant.stock < item.quantity) {
-      throw new Error(`Insufficient stock for SKU ${item.sku}. Available: ${variant.stock}, Requested: ${item.quantity}`);
+    if (!product) {
+      throw new Error(`Product with SKU ${plainItem.sku} not found`);
     }
     
-    // Update with current prices
+    const variant = product.variants.find(v => v.sku === plainItem.sku);
+    
+    if (!variant) {
+      throw new Error(`Variant with SKU ${plainItem.sku} not found`);
+    }
+    
+    if (variant.stock < plainItem.quantity) {
+      throw new Error(`Insufficient stock for SKU ${plainItem.sku}. Available: ${variant.stock}, Requested: ${plainItem.quantity}`);
+    }
+    
+    // Create a clean plain object
     finalItems.push({
-      ...item,
-      price: variant.sellingPrice, // Current price at acceptance time
       productId: product._id,
       productName: product.name,
-      variantName: variant.name
+      variantName: variant.name,
+      sku: plainItem.sku,
+      quantity: plainItem.quantity,
+      unit: plainItem.unit || 'box',
+      Ordered: plainItem.quantity,
+      price: variant.sellingPrice // Current price at acceptance time
     });
   }
   
@@ -374,31 +514,46 @@ const validateStockAndUpdatePrices = async (items, distributorId) => {
 // Reserve stock (reduce available stock)
 const reserveStock = async (items) => {
   for (let item of items) {
+    // Handle both plain objects and Mongoose documents
+    const sku = item.sku || (item.toObject && item.toObject().sku);
+    const quantity = item.quantity || (item.toObject && item.toObject().quantity);
+    
     await Product.updateOne(
-      { 'variants.sku': item.sku },
-      { $inc: { 'variants.$.stock': -item.quantity } }
+      { 'variants.sku': sku },
+      { $inc: { 'variants.$.stock': -quantity } }
     );
   }
 };
+export const validateModificationRequest = (modifications) => {
+  const errors = [];
 
-// Apply distributor modifications
-const applyModifications = async (originalItems, modifications) => {
-  const modifiedItems = [...originalItems];
-  
-  modifications.forEach(mod => {
-    const itemIndex = modifiedItems.findIndex(item => item.sku === mod.sku);
-    if (itemIndex !== -1) {
-      if (mod.newQuantity !== undefined) {
-        modifiedItems[itemIndex].quantity = mod.newQuantity;
-        modifiedItems[itemIndex].Ordered = mod.newQuantity;
-      }
-      if (mod.remove) {
-        modifiedItems.splice(itemIndex, 1);
+  if (!modifications || typeof modifications !== 'object') {
+    errors.push('Modifications object is required');
+    return errors;
+  }
+
+  if (!modifications.items || !Array.isArray(modifications.items)) {
+    errors.push('Modifications must contain an items array');
+    return errors;
+  }
+
+  modifications.items.forEach((item, index) => {
+    if (!item.productId && !item.sku) {
+      errors.push(`Item ${index + 1}: productId or sku is required`);
+    }
+
+    if (item.newQuantity !== undefined) {
+      if (typeof item.newQuantity !== 'number' || item.newQuantity < 0) {
+        errors.push(`Item ${index + 1}: newQuantity must be a non-negative number`);
       }
     }
+
+    if (item.remove !== undefined && typeof item.remove !== 'boolean') {
+      errors.push(`Item ${index + 1}: remove must be a boolean`);
+    }
   });
-  
-  return modifiedItems;
+
+  return errors;
 };
 
 // Simple notification helper
@@ -438,7 +593,7 @@ export const getOrdersList = async (req, res) => {
 
     const orders = await Order.find(filter)
       .select('orderNumber status totalAmount createdAt items')
-      .populate('retailerId', 'businessName phone email pincode')
+      .populate('retailerId', 'ownerName businessName phone email pincode')
       .populate('distributorId', 'ownerName phone email pincode')
       .sort({ createdAt: -1 })
       .limit(50);
@@ -447,11 +602,15 @@ export const getOrdersList = async (req, res) => {
       const base = {
         id: order._id,
         orderNumber: order.orderNumber,
+        items: order.items.map(item => ({
+       productId: item.productId,
+        })),
         status: order.status,
         totalAmount: order.totalAmount,
         itemCount: order.items.length,
         createdAt: order.createdAt,
       };
+      
 
       if (role === 'distributor') {
         return {
@@ -459,6 +618,8 @@ export const getOrdersList = async (req, res) => {
           retailer: order.retailerId ? {
             id: order.retailerId._id,
             name: order.retailerId.ownerName,
+            phone: order.retailerId.phone,
+            businessName: order.retailerId.businessName,
           } : null
         };
       } else {
@@ -467,6 +628,8 @@ export const getOrdersList = async (req, res) => {
           distributor: order.distributorId ? {
             id: order.distributorId._id,
             name: order.distributorId.ownerName,
+            phone: order.distributorId.phone,
+            businessName: order.distributorId.businessName,
           } : null
         };
       }
