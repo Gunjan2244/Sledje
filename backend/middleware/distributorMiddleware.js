@@ -3,7 +3,7 @@ import { models } from '../models/index.js';
 
 /**
  * Authentication middleware for verifying JWT tokens
- * Checks if distributor is authenticated and adds user data to request
+ * Checks if distributor is authenticated and adds user data to request 56
  */
 export const authenticate = async (req, res, next) => {
   try {
