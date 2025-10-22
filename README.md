@@ -13,12 +13,6 @@ It includes **web** and **mobile** apps for seamless inventory tracking, cart ma
 * Add, edit, or remove products
 * Low-stock notifications
 
-### 🛍️ Customer App (Flutter)
-
-* **Product browsing** with live availability
-* **Cart management** and **checkout**
-* Integrated **payment gateway**
-* **QR/Barcode scanner** for quick product lookup
 
 ### 🧠 Backend (MERN + PostgreSQL)
 
