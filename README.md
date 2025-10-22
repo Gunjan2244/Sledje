@@ -1,4 +1,4 @@
-# 🛒 Sledje – Smart Retail & Distribution Management Platform
+#  Sledje – Smart Retail & Distribution Management Platform
 
 **Sledje** is a full-stack platform that connects **retailers** and **distributors** in a single ecosystem.
 It helps manage **inventory, orders, payments, and relationships** — all in one place.
@@ -6,19 +6,19 @@ Sledje aims to make supply chain management for small and medium retailers **fas
 
 ---
 
-## 🚀 Overview
+## Overview
 
 Sledje consists of:
 
-* 🏪 **Retailer Panel** – for managing shop inventory, placing orders, tracking payments, and maintaining relationships.
-* 🚚 **Distributor Panel** – for managing product catalogs, processing retailer orders, analyzing sales, and tracking payments.
-* 🌐 **Landing Page** – a unified entry point for both retailers and distributors to sign up, log in, and learn about the platform.
+*  **Retailer Panel** – for managing shop inventory, placing orders, tracking payments, and maintaining relationships.
+*  **Distributor Panel** – for managing product catalogs, processing retailer orders, analyzing sales, and tracking payments.
+*  **Landing Page** – a unified entry point for both retailers and distributors to sign up, log in, and learn about the platform.
 
 ---
 
-## 🧾 Core Features
+##  Core Features
 
-### 🏪 **Retailer Dashboard**
+###  **Retailer Dashboard**
 
 | Section               | Description                                                                            |
 | --------------------- | -------------------------------------------------------------------------------------- |
@@ -29,7 +29,7 @@ Sledje consists of:
 
 ---
 
-### 🚚 **Distributor Dashboard**
+###  **Distributor Dashboard**
 
 | Section           | Description                                                                     |
 | ----------------- | ------------------------------------------------------------------------------- |
@@ -41,7 +41,7 @@ Sledje consists of:
 
 ---
 
-### 🌐 **Landing Page**
+###  **Landing Page**
 
 * Welcomes new and existing users
 * Provides login and signup portals for both retailers and distributors
@@ -49,7 +49,7 @@ Sledje consists of:
 
 ---
 
-## 🧠 Tech Stack
+##  Tech Stack
 
 | Layer                 | Technology                                            |
 | --------------------- | ----------------------------------------------------- |
@@ -89,17 +89,10 @@ npm install
 npm start
 ```
 
-### 4️⃣ Flutter App (if applicable)
-
-```bash
-cd mobile
-flutter pub get
-flutter run
-```
 
 ---
 
-## 🧾 Environment Variables
+## Environment Variables
 
 Create a `.env` file inside the **backend** folder with the following:
 
@@ -143,7 +136,7 @@ Sledje/
 
 ---
 
-## 🧩 Example API Endpoints
+##  Example API Endpoints
 
 | Method | Endpoint                     | Description                      |
 | ------ | ---------------------------- | -------------------------------- |
@@ -155,7 +148,7 @@ Sledje/
 
 ---
 
-## 📊 Key Workflows
+##  Key Workflows
 
 **Retailer → Distributor**
 
@@ -169,15 +162,15 @@ Sledje/
 
 ## 💡 Future Enhancements
 
-* 📈 Advanced analytics dashboard
-* 📦 Smart restocking suggestions
-* 🔔 In-app notifications for payment reminders
-* 💬 Chat between retailers and distributors
-* 📱 Complete Flutter app for both roles
+*  Advanced analytics dashboard
+*  Smart restocking suggestions
+*  In-app notifications for payment reminders
+*  Chat between retailers and distributors
+*  Complete Flutter app for both roles
 
 ---
 
-## 🤝 Contributing
+##  Contributing
 
 Contributions are welcome!
 
@@ -188,19 +181,19 @@ Contributions are welcome!
    git checkout -b feature-name
    ```
 3. Commit changes and push
-4. Create a Pull Request 🎉
+4. Create a Pull Request 
 
 ---
 
-## 👤 Author
+##  Author
 
 **Gunjan Kumar**
-📧 [[gunjan23ths@gmail.com](mailto:gunjan23ths@gmail.com)]
-🌐 [LinkedIn or Portfolio link]
+[[gunjan23ths@gmail.com](mailto:gunjan23ths@gmail.com)]
+ [LinkedIn or Portfolio link]
 
 ---
 
-## 📜 License
+##  License
 
 This project is licensed under the **MIT License**.
 
