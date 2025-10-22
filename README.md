@@ -1,47 +1,70 @@
-# 🛒 Sledje – Smart Retail & Delivery Platform
-
-**Sledje** is a full-stack retail management and delivery platform that connects shops, inventory, and customers in real time.
-It includes **web** and **mobile** apps for seamless inventory tracking, cart management, payments, and deliveries.
-
----
-
-## 🚀 Features
-
-### 🧾 Retail Management
-
-* Real-time **inventory tracking**
-* Add, edit, or remove products
-* Low-stock notifications
 
 
-### 🧠 Backend (MERN + PostgreSQL)
+# 🛒 Sledje – Smart Retail & Distribution Management Platform
 
-* Node.js + Express REST API
-* PostgreSQL for structured data
-* JWT authentication
-* Real-time inventory sync between stores and users
-
-### 📦 Delivery System
-
-* Smart delivery scheduling (based on availability & capacity)
-* Multi-hub logistics (Bikes, LCVs, HCVs)
-* Fuel-efficient routing
+**Sledje** is a full-stack platform that connects **retailers** and **distributors** in a single ecosystem.
+It helps manage **inventory, orders, payments, and relationships** — all in one place.
+Sledje aims to make supply chain management for small and medium retailers **faster, transparent, and fully digital**.
 
 ---
 
-## 🧩 Tech Stack
+## 🚀 Overview
 
-| Layer                    | Technology                                 |
-| ------------------------ | ------------------------------------------ |
-| **Frontend (Web)**       | React.js + Tailwind CSS                    |
-| **Backend**              | Node.js + Express                          |
-| **Database**             | PostgreSQL                                 |
-| **Authentication**       | JWT                                        |
-| **Hosting / Deployment** | Render(for Backend) / Vercel(for Frontend) |
+Sledje consists of:
+
+* 🏪 **Retailer Panel** – for managing shop inventory, placing orders, tracking payments, and maintaining relationships.
+* 🚚 **Distributor Panel** – for managing product catalogs, processing retailer orders, analyzing sales, and tracking payments.
+* 🌐 **Landing Page** – a unified entry point for both retailers and distributors to sign up, log in, and learn about the platform.
 
 ---
 
-## ⚙️ Installation & Setup
+## 🧾 Core Features
+
+### 🏪 **Retailer Dashboard**
+
+| Section               | Description                                                                            |
+| --------------------- | -------------------------------------------------------------------------------------- |
+| **Shelf (Inventory)** | View, manage, and update all available products in the shop.                           |
+| **Cart & Order Page** | Add items to cart, place new orders, and manage existing ones (track status).          |
+| **Payments Page**     | Manage **daily or weekly** payments to distributors, based on sales of their products. |
+| **You Page**          | Update shop profile, manage connected distributors, and view relationship info.        |
+
+---
+
+### 🚚 **Distributor Dashboard**
+
+| Section           | Description                                                                     |
+| ----------------- | ------------------------------------------------------------------------------- |
+| **Orders Page**   | View incoming retailer orders; **accept, reject, or modify** them in real time. |
+| **Products Page** | Add, edit, or remove products distributed to connected retailers.               |
+| **Overview Page** | Analyze overall product sales, performance, and demand trends.                  |
+| **Payments Page** | Track retailer payments, send **payment reminders** or mark defaults.           |
+| **You Page**      | Update distributor profile and connect with new retailers.                      |
+
+---
+
+### 🌐 **Landing Page**
+
+* Welcomes new and existing users
+* Provides login and signup portals for both retailers and distributors
+* Highlights Sledje’s features and benefits
+
+---
+
+## 🧠 Tech Stack
+
+| Layer                 | Technology                                            |
+| --------------------- | ----------------------------------------------------- |
+| **Frontend (Web)**    | React.js + Tailwind CSS                               |
+| **Backend**           | Node.js + Express.js                                  |
+| **Database**          | PostgreSQL                                            |
+| **Mobile (optional)** | Flutter (for portable version of retailer dashboard)  |
+| **Auth**              | JWT (JSON Web Token)                                  |
+| **Payments**          | Integrated via gateway API (e.g., Razorpay or Stripe) |
+
+---
+
+## ⚙️ Setup & Installation
 
 ### 1️⃣ Clone the Repository
 
@@ -56,11 +79,11 @@ cd sledje
 cd backend
 npm install
 cp .env.example .env
-# Edit .env with your DB credentials
+# Fill in database and secret details
 npm start
 ```
 
-### 3️⃣ Frontend Setup (React)
+### 3️⃣ Frontend Setup
 
 ```bash
 cd frontend
@@ -68,39 +91,12 @@ npm install
 npm start
 ```
 
-### 4️⃣ Flutter App Setup
+### 4️⃣ Flutter App (if applicable)
 
 ```bash
 cd mobile
 flutter pub get
 flutter run
-```
-
----
-
-## 🧠 Folder Structure
-
-```
-Sledje/
-│
-├── backend/           # Node.js + Express API
-│   ├── src/
-│   │   ├── routes/
-│   │   ├── controllers/
-│   │   ├── models/
-│   │   └── utils/
-│   └── .env
-│
-├── frontend/          # React web app
-│   ├── src/
-│   └── public/
-│
-├── mobile/            # Flutter app
-│   ├── lib/
-│   ├── assets/
-│   └── pubspec.yaml
-│
-└── README.md
 ```
 
 ---
@@ -118,70 +114,96 @@ PAYMENT_GATEWAY_KEY=your_payment_key
 
 ---
 
-## 🧪 Testing
+## 📂 Folder Structure
 
-To run backend tests:
-
-```bash
-cd backend
-npm test
+```
+Sledje/
+│
+├── backend/            # Node.js + Express API
+│   ├── routes/
+│   ├── controllers/
+│   ├── models/
+│   ├── middleware/
+│   └── utils/
+│
+├── frontend/           # React app for retailer + distributor dashboards
+│   ├── src/
+│   │   ├── components/
+│   │   ├── pages/
+│   │   │   ├── Retailer/
+│   │   │   ├── Distributor/
+│   │   │   └── Landing/
+│   │   └── utils/
+│   └── public/
+│
+├── mobile/             # Flutter app (optional)
+│   ├── lib/
+│   └── assets/
+│
+└── README.md
 ```
 
 ---
 
-## 🌐 API Endpoints (Example)
+## 🧩 Example API Endpoints
 
-| Method | Endpoint          | Description       |
-| ------ | ----------------- | ----------------- |
-| GET    | `/api/products`   | Get all products  |
-| POST   | `/api/products`   | Add a new product |
-| GET    | `/api/orders/:id` | Get order details |
-| POST   | `/api/auth/login` | Login user        |
+| Method | Endpoint                     | Description                      |
+| ------ | ---------------------------- | -------------------------------- |
+| GET    | `/api/retailers/products`    | Fetch all available products     |
+| POST   | `/api/orders/new`            | Place a new retailer order       |
+| PUT    | `/api/orders/:id`            | Update order status              |
+| GET    | `/api/payments`              | Get payment history              |
+| POST   | `/api/distributors/products` | Add or edit distributor products |
+
+---
+
+## 📊 Key Workflows
+
+**Retailer → Distributor**
+
+1. Retailer browses product shelf
+2. Adds items to cart and places order
+3. Distributor receives and accepts/rejects
+4. Payment tracked based on sale
+5. Distributor sends reminders if overdue
 
 ---
 
 ## 💡 Future Enhancements
 
-* AI-based demand prediction
-* Route optimization for delivery
-* Admin analytics dashboard
-* Multi-language support
+* 📈 Advanced analytics dashboard
+* 📦 Smart restocking suggestions
+* 🔔 In-app notifications for payment reminders
+* 💬 Chat between retailers and distributors
+* 📱 Complete Flutter app for both roles
 
 ---
 
 ## 🤝 Contributing
 
-1. Fork this repo
-2. Create your feature branch
+Contributions are welcome!
+
+1. Fork the repository
+2. Create a new branch:
 
    ```bash
    git checkout -b feature-name
    ```
-3. Commit your changes
-
-   ```bash
-   git commit -m "Added new feature"
-   ```
-4. Push to branch
-
-   ```bash
-   git push origin feature-name
-   ```
-5. Open a Pull Request 🎉
+3. Commit changes and push
+4. Create a Pull Request 🎉
 
 ---
 
-## 🧑‍💻 Author
+## 👤 Author
 
 **Gunjan Kumar**
-📧 [[gunjan23thsl@gmail.com](mailto:gunjan23thsl@gmail.com)]
+📧 [[gunjan23ths@gmail.com](mailto:gunjan23ths@gmail.com)]
 🌐 [(https://sledje.vercel.app/)]
 
 ---
 
 ## 📜 License
 
-This project is licensed under the **MIT License** – see the [LICENSE](LICENSE) file for details.
+This project is licensed under the **MIT License**.
 
----
 
