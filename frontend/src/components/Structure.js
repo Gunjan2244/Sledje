@@ -23,14 +23,15 @@ export default function NavbarWrapper({ children }) {
       {/* Login Modal */}
       {isLoginModalOpen && (
         <div
-          className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm"  style={{ zIndex: 9999 }}
+          className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm z-[9999] p-4"
           onClick={closeLoginModal}
         >
           <div
-            className="bg-white p-8 rounded-lg shadow-lg w-full max-w-lg"
+            className="bg-transparent max-w-6xl w-full max-h-[95vh] rounded-lg shadow-lg"
             onClick={(e) => e.stopPropagation()}
           >
-            <Login />
+            {/* Pass closeLoginModal as a prop so Login can close itself after success */}
+            <Login onClose={closeLoginModal} />
           </div>
         </div>
       )}

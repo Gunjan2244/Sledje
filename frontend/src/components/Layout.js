@@ -97,7 +97,7 @@ export default function Layout() {
               <img
                 src={logo}
                 alt="Logo"
-                className="hidden md:block h-12 w-auto cursor-pointer pl-16"
+                className="hidden md:block h-20 w-60 cursor-pointer pl-16"
                 onClick={() => navigate("/")}
               />
 

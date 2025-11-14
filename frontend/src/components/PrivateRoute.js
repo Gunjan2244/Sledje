@@ -10,7 +10,7 @@ const PrivateRoute = ({ children }) => {
         {/* Page Content */}
         <main className={`flex-grow blur-background`}>
           <div
-            className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm"
+            className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm z-[9999] p-4 "
             style={{ zIndex: 9999 }}
           >
             <div

@@ -374,7 +374,7 @@ export default function Navbar({ onLoginClick }) {
           {/* Desktop: Logo right */}
           <div className="hidden lg:flex flex-shrink-0 ml-auto">
             <Link to="/" className="flex items-center">
-              <img src={logo} alt="Logo" className="h-12 w-auto" />
+              <img src={logo} alt="Logo" className="h-20 w-auto" />
             </Link>
           </div>
 
