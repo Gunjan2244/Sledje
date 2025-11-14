@@ -2,7 +2,7 @@ import React from "react";
 import { BrowserRouter as Router, Route, Routes, Navigate } from "react-router-dom";
 
 // Components
-import NavbarWrap from "./pages/Landing/Structure";
+import NavbarWrap from "./components/Structure"
 import PrivateRoute from "./components/PrivateRoute";
 import { AuthProvider } from "./components/AuthContext";
 // Pages
