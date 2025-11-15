@@ -1,30 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { User, Building2, Users, Mail, Lock, Phone, MapPin, FileText, Eye, EyeOff, ArrowLeft, Truck } from 'lucide-react';
-
-// Mock API - Replace with your actual API
-const API = {
-  post: async (endpoint, data) => {
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    console.log('API Call:', endpoint, data);
-    
-    if (endpoint.includes('/login')) {
-      return { data: { token: 'mock-token', user: { email: data.email, userType: endpoint.split('/')[1] } } };
-    }
-    if (endpoint.includes('/register')) {
-      return { data: { message: 'Registration successful' } };
-    }
-    if (endpoint.includes('/forgot-password')) {
-      return { data: { message: 'Reset link sent' } };
-    }
-    if (endpoint.includes('/verify-otp')) {
-      return { data: { message: 'OTP verified' } };
-    }
-    if (endpoint.includes('/reset-password')) {
-      return { data: { message: 'Password reset successful' } };
-    }
-  }
-};
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from './AuthContext';
+import API from '../api';
 
 // User Type Selection Component
 const UserTypeSelection = ({ onSelectType }) => {
@@ -68,11 +46,13 @@ const UserTypeSelection = ({ onSelectType }) => {
 };
 
 // Login Component
-const LoginPage = ({ userType, onBack, onNavigateToRegister, onNavigateToForgot, onLoginSuccess }) => {
+const LoginPage = ({ userType, onBack, onNavigateToRegister, onNavigateToForgot }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
   const [loginData, setLoginData] = useState({ email: '', password: '' });
+  const navigate = useNavigate();
+  const { login: authLogin } = useAuth();
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -80,22 +60,31 @@ const LoginPage = ({ userType, onBack, onNavigateToRegister, onNavigateToForgot,
     setMessage({ type: '', text: '' });
 
     try {
-      const endpoint = `/${userType}/login`;
-      const response = await API.post(endpoint, loginData);
+      const endpoint = userType === 'retailers' ? '/retailers/login' : '/distributors/login';
+      const response = await API.post(endpoint, {
+        email: loginData.email,
+        password: loginData.password
+      });
       
       setMessage({ type: 'success', text: 'Login successful!' });
+      console.log('Login response:', response.data);
+      
+      if (authLogin) {
+        authLogin({ user: response.data });
+      }
+      
       setTimeout(() => {
-        onLoginSuccess(response.data);
+        navigate(userType === 'retailers' ? '/retailer' : '/distributor');
       }, 1000);
     } catch (error) {
-      setMessage({ type: 'error', text: 'Invalid credentials. Please try again.' });
+      const errorMessage = error.response?.data?.message || 'Invalid credentials. Please try again.';
+      setMessage({ type: 'error', text: errorMessage });
     } finally {
       setLoading(false);
     }
   };
 
   const handleGoogleSignIn = () => {
-    // Implement Google OAuth
     console.log('Google Sign In for', userType);
     setMessage({ type: 'info', text: 'Google Sign-In coming soon!' });
   };
@@ -220,7 +209,7 @@ const LoginPage = ({ userType, onBack, onNavigateToRegister, onNavigateToForgot,
 };
 
 // Registration Component
-const RegisterPage = ({ userType, onBack, onNavigateToLogin, onRegisterSuccess }) => {
+const RegisterPage = ({ userType, onBack, onNavigateToLogin }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
@@ -268,7 +257,7 @@ const RegisterPage = ({ userType, onBack, onNavigateToLogin, onRegisterSuccess }
     setMessage({ type: '', text: '' });
 
     try {
-      const endpoint = `/${userType}/register`;
+      const endpoint = userType === 'retailers' ? '/retailers/register' : '/distributors/register';
       const payload = {
         ...(userType === 'retailers' 
           ? { businessName: registerData.businessName }
@@ -287,11 +276,26 @@ const RegisterPage = ({ userType, onBack, onNavigateToLogin, onRegisterSuccess }
       await API.post(endpoint, payload);
       setMessage({ type: 'success', text: 'Account created successfully!' });
       
+      setRegisterData({
+        businessName: '',
+        CompanyName: '',
+        ownerName: '',
+        email: '',
+        password: '',
+        confirmPassword: '',
+        phone: '',
+        gstNumber: '',
+        businessType: '',
+        pincode: '',
+        location: ''
+      });
+      
       setTimeout(() => {
-        onRegisterSuccess();
+        onNavigateToLogin();
       }, 1500);
     } catch (error) {
-      setMessage({ type: 'error', text: 'Registration failed. Please try again.' });
+      const errorMessage = error.response?.data?.message || 'Registration failed. Please try again.';
+      setMessage({ type: 'error', text: errorMessage });
     } finally {
       setLoading(false);
     }
@@ -449,6 +453,7 @@ const RegisterPage = ({ userType, onBack, onNavigateToLogin, onRegisterSuccess }
                 value={registerData.businessType}
                 onChange={(e) => setRegisterData({...registerData, businessType: e.target.value})}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                required
               >
                 <option value="">Select type</option>
                 {businessTypes.map((type) => (
@@ -469,6 +474,7 @@ const RegisterPage = ({ userType, onBack, onNavigateToLogin, onRegisterSuccess }
                   onChange={(e) => setRegisterData({...registerData, pincode: e.target.value})}
                   className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="Enter pincode"
+                  required
                 />
               </div>
             </div>
@@ -509,8 +515,8 @@ const RegisterPage = ({ userType, onBack, onNavigateToLogin, onRegisterSuccess }
 };
 
 // Forgot Password Component
-const ForgotPasswordPage = ({ userType, onBack, onSuccess }) => {
-  const [step, setStep] = useState(1); // 1: email, 2: otp, 3: reset
+const ForgotPasswordPage = ({ userType, onBack }) => {
+  const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
   const [email, setEmail] = useState('');
@@ -565,7 +571,7 @@ const ForgotPasswordPage = ({ userType, onBack, onSuccess }) => {
     try {
       await API.post(`/${userType}/reset-password`, { email, otp, newPassword });
       setMessage({ type: 'success', text: 'Password reset successful!' });
-      setTimeout(() => onSuccess(), 1500);
+      setTimeout(() => onBack(), 1500);
     } catch (error) {
       setMessage({ type: 'error', text: 'Failed to reset password. Please try again.' });
     } finally {
@@ -623,7 +629,15 @@ const ForgotPasswordPage = ({ userType, onBack, onSuccess }) => {
               disabled={loading}
               className="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50"
             >
-              {loading ? 'Sending...' : 'Send OTP'}
+              {loading ? 'Verifying...' : 'Verify OTP'}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleSendOTP({ preventDefault: () => {} })}
+              className="w-full text-sm text-blue-600 hover:text-blue-700 font-medium"
+            >
+              Resend OTP
             </button>
           </form>
         )}
@@ -715,27 +729,12 @@ const ForgotPasswordPage = ({ userType, onBack, onSuccess }) => {
 };
 
 // Main App Component
-export default function App() {
-  const [currentPage, setCurrentPage] = useState('userType'); // userType, login, register, forgot
+export default function Login() {
+  const [currentPage, setCurrentPage] = useState('userType');
   const [selectedUserType, setSelectedUserType] = useState(null);
 
   const handleUserTypeSelect = (type) => {
     setSelectedUserType(type);
-    setCurrentPage('login');
-  };
-
-  const handleLoginSuccess = (data) => {
-    console.log('Login successful:', data);
-    alert(`Welcome back! Logged in as ${selectedUserType}`);
-    // Navigate to dashboard based on user type
-    // window.location.href = `/${selectedUserType}`;
-  };
-
-  const handleRegisterSuccess = () => {
-    setCurrentPage('login');
-  };
-
-  const handleForgotPasswordSuccess = () => {
     setCurrentPage('login');
   };
 
@@ -751,7 +750,6 @@ export default function App() {
           onBack={() => setCurrentPage('userType')}
           onNavigateToRegister={() => setCurrentPage('register')}
           onNavigateToForgot={() => setCurrentPage('forgot')}
-          onLoginSuccess={handleLoginSuccess}
         />
       )}
 
@@ -760,7 +758,6 @@ export default function App() {
           userType={selectedUserType}
           onBack={() => setCurrentPage('login')}
           onNavigateToLogin={() => setCurrentPage('login')}
-          onRegisterSuccess={handleRegisterSuccess}
         />
       )}
 
@@ -768,7 +765,6 @@ export default function App() {
         <ForgotPasswordPage
           userType={selectedUserType}
           onBack={() => setCurrentPage('login')}
-          onSuccess={handleForgotPasswordSuccess}
         />
       )}
     </div>
