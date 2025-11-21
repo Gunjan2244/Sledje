@@ -98,7 +98,7 @@ Create a `.env` file inside the **backend** folder with the following:
 
 ```
 PORT=5000
-DATABASE_URL=postgresql://username:password@localhost:5432/sledje
+POSTGRES_URL=postgresql://username:password@localhost:5432/sledje
 JWT_SECRET=your_secret_key
 PAYMENT_GATEWAY_KEY=your_payment_key
 ```
