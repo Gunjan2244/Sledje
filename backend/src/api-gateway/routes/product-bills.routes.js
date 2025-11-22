@@ -1,17 +1,28 @@
+// src/api-gateway/routes/product-bills.routes.js
 import express from "express";
 import { requireAuth } from "../middlewares/auth.middleware.js";
 import {
-  listBillsController,
-  getBillController,
-  getBillTransactionsController,
-  payBillController,
+  listBills,
+  getBill,
+  getBillTransactions,
+  payBill,
 } from "../controllers/product-bills.controller.js";
 
 const router = express.Router();
 
-router.get("/", requireAuth, listBillsController);
-router.get("/:billId", requireAuth, getBillController);
-router.get("/:billId/transactions", requireAuth, getBillTransactionsController);
-router.post("/:billId/pay", requireAuth, payBillController);
+// all product-bill routes require auth
+router.use(requireAuth);
+
+// GET /api/product-bills?role-based
+router.get("/", listBills);
+
+// GET /api/product-bills/:billId
+router.get("/:billId", getBill);
+
+// GET /api/product-bills/:billId/transactions
+router.get("/:billId/transactions", getBillTransactions);
+
+// POST /api/product-bills/:billId/pay
+router.post("/:billId/pay", payBill);
 
 export default router;

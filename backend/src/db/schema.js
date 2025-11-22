@@ -558,3 +558,42 @@ export const inventorySnapshots = pgTable("inventory_snapshots", {
   stock: integer("stock").notNull().default(0),
   snapDate: timestamp("snap_date").notNull(),
 });
+
+
+
+
+// =========================================
+// EVENT DEDUPLICATION TABLE
+// =========================================
+export const eventDedupe = pgTable("event_dedupe", {
+  eventId: text("event_id").primaryKey(),
+  processedAt: timestamp("processed_at").defaultNow()
+});
+
+
+
+// =========================================
+// NOTIFICATIONS LOG
+// =========================================
+export const notificationsLog = pgTable("notifications_log", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id"),
+  title: text("title"),
+  body: text("body"),
+  eventType: text("event_type"),
+  createdAt: timestamp("created_at").defaultNow()
+});
+
+
+
+// =========================================
+// RETAILER INVENTORY TABLE
+// =========================================
+export const retailerInventory = pgTable("retailer_inventory", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  retailerId: uuid("retailer_id").references(() => retailers.id),
+  variantId: uuid("variant_id").references(() => productVariants.id),
+  quantity: integer("quantity").default(0),
+  updatedAt: timestamp("updated_at").defaultNow()
+});
+

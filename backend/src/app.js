@@ -28,31 +28,29 @@ app.use(cors());
 app.use(express.json());
 
 // Auth
-app.use("/api/auth", authRoutes);
+app.use("/auth", authRoutes);
 
 // Retailer/Distributor
-app.use("/api/retailers", retailerRoutes);
-app.use("/api/distributors", distributorRoutes);
+app.use("/retailers", retailerRoutes);
+app.use("/distributors", distributorRoutes);
 
 // Products + Inventory
-app.use("/api/products", productsRoutes);
-app.use("/api/inventory", inventoryRoutes);
+app.use("/products", productsRoutes);
+app.use("/inventory", inventoryRoutes);
 
 // Cart
-app.use("/api/cart", cartRoutes);
+app.use("/cart", cartRoutes);
 
 // Orders
-app.use("/api/orders", ordersRoutes);
+app.use("/orders", ordersRoutes);
 
 // Connections / Notifications
-app.use("/api/connections", connectionsRoutes);
-app.use("/api/notifications", notificationsRoutes);
-
+app.use("/connections", connectionsRoutes);
+app.use("/notifications", notificationsRoutes);
 // Billing / Invoices / Ledger
-app.use("/api/bills", productBillsRoutes);
-app.use("/api/invoices", invoicesRoutes);
-app.use("/api/ledger", ledgerRoutes);
-
+app.use("/bills", productBillsRoutes);
+app.use("/invoices", invoicesRoutes);
+app.use("/ledger", ledgerRoutes);
 
 
 export default app;

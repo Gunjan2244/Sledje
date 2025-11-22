@@ -5,7 +5,8 @@ import {
   distributors,
   // otp table name in your schema: we expect otp_codes table (if not present, create it)
 } from "../../db/schema.js";
-import { sql } from "drizzle-orm";
+import { sql,eq } from "drizzle-orm";
+
 
 export default {
   // Users
@@ -20,7 +21,7 @@ export default {
   },
 
   async findUserByEmail(email) {
-    const [row] = await db.select().from(users).where(users.email.eq(email));
+    const [row] = await db.select().from(users).where(eq(users.email, email));;
     return row || null;
   },
 
@@ -39,6 +40,7 @@ export default {
       businessType,
       pincode,
       location,
+      
       address,
     }).returning();
     return row;

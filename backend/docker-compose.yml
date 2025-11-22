@@ -12,12 +12,9 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
 
-
   nats:
     image: nats:latest
-    command:
-      - "--jetstream"
-      - "--store_dir=/data"
+    command: ["-js", "--store_dir=/data"]   # ← FIXED
     ports:
       - "4222:4222"
       - "8222:8222"
