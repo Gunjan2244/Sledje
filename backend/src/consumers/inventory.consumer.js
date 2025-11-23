@@ -6,10 +6,9 @@ import { publishEvent } from "../config/nats-streams.js";
 import { eq } from "drizzle-orm";
 
 export default async function startInventoryConsumers() {
-  await createConsumer({
-    subject: "orders.completed",
-    durable: "inventory_orders_completed",
-    handler: async (data) => {
+  await createConsumer("orders.completed",
+  "inventory_orders_completed",
+  async (data) => {
       const { order, items, eventId } = data;
 
       await dedupe(eventId, async () => {
@@ -43,5 +42,5 @@ export default async function startInventoryConsumers() {
         console.log("📦 inventory.updated_after_order published");
       });
     },
-  });
+  );
 }

@@ -5,10 +5,10 @@ import productBillRepo from "../modules/product-bills/product-bills.repository.j
 import { publishEvent } from "../config/nats-streams.js";
 
 export default async function startPaymentConsumer() {
-  await createConsumer({
-    subject: "payments.captured",
-    durable: "payments_handler",
-    handler: async (data) => {
+  await createConsumer(
+    "payments.captured",
+   "payments_handler",
+    async (data) => {
       const { eventId, productBillId, amount, metadata } = data;
 
       await dedupe(eventId, async () => {
@@ -29,5 +29,5 @@ export default async function startPaymentConsumer() {
         console.log("💵 Payment processed (exact once).");
       });
     },
-  });
+  );
 }

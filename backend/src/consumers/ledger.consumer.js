@@ -5,11 +5,10 @@ import { db } from "../config/postgres.js";
 import { eq } from "drizzle-orm";
 
 export default async function startLedgerConsumer() {
-  await createConsumer({
-    subject: "product_bills.updated",
-    durable: "ledger_updater",
-    handler: async (data) => {
-      const { eventId, orderId, retailerId, distributorId } = data;
+  await createConsumer("product_bills.updated",
+  "ledger_updater",
+  async (data) => {
+    const { eventId, orderId, retailerId, distributorId } = data;
 
       await dedupe(eventId, async () => {
         await db.insert(ledger).values({
@@ -20,5 +19,5 @@ export default async function startLedgerConsumer() {
         });
       });
     },
-  });
+  );
 }

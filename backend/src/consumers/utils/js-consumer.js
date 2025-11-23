@@ -1,9 +1,9 @@
 import { natsClient, codec } from "../../config/nats.js";
+import { consumerOpts, createInbox } from "nats";  
 import { db } from "../../config/postgres.js";
 
 /**
  * Hybrid: At-least-once delivery + de-duplication table
- * Ensures idempotency for all consumers
  */
 async function isDuplicate(messageId) {
   const result = await db.execute(`
@@ -21,20 +21,26 @@ async function markProcessed(messageId) {
 }
 
 /**
- * Create a JetStream consumer (durable)
+ * Create JetStream Consumer (durable, manual ack)
  */
 export async function createConsumer(subject, durable, handler) {
   try {
     const nc = natsClient();
     const js = nc.jetstream();
 
-    const sub = await js.subscribe(subject, {
-      durable,
-      deliver_policy: "all",
-      ack_policy: "explicit"
-    });
+    // 🛠 REQUIRED FIX — add inbox for durable consumer
+    const inbox = createInbox();
 
-    console.log(`🔗 Consumer ready → ${subject}`);
+    const opts = consumerOpts();
+    opts.durable(durable);
+    opts.deliverTo(inbox);          // <-- REQUIRED FOR DURABLE CONSUMERS
+    opts.deliverAll();              // deliver_policy = all
+    opts.ackExplicit();             // ack_policy = explicit
+    opts.manualAck();               // manual ack enabled
+
+    const sub = await js.subscribe(subject, opts);
+
+    console.log(`🔗 Consumer ready → ${subject} (durable=${durable})`);
 
     for await (const msg of sub) {
       const raw = codec.decode(msg.data);
@@ -49,27 +55,23 @@ export async function createConsumer(subject, durable, handler) {
       }
 
       const messageId = msg?.info?.streamSequence;
-      if (!messageId) {
-        console.warn("⚠ No seq found, skipping marking", subject);
-      }
 
-      // DEDUP CHECK
-      if (await isDuplicate(messageId)) {
-        console.log(`♻️ Duplicate ignored → ${subject} seq=${messageId}`);
+      if (messageId && await isDuplicate(messageId)) {
+        console.log(`♻️ Duplicate ignored ${subject} -> seq=${messageId}`);
         msg.ack();
         continue;
       }
 
       try {
         await handler(json, msg);
-
         if (messageId) await markProcessed(messageId);
-
         msg.ack();
       } catch (err) {
-        console.error(`❌ Handler error in ${subject}`, err);
+        console.error(`❌ Error in consumer handler: ${subject}`, err);
+        // msg.nak() if you want retry
       }
     }
+
   } catch (err) {
     console.error(`❌ Failed to start consumer: ${subject}`, err);
   }

@@ -5,10 +5,10 @@ import productBillRepo from "../modules/product-bills/product-bills.repository.j
 import { publishEvent } from "../config/nats-streams.js";
 
 export default async function startProductBillConsumer() {
-  await createConsumer({
-    subject: "inventory.updated_after_order",
-    durable: "product_bill_updater",
-    handler: async (data) => {
+  await createConsumer(
+    "inventory.updated_after_order",
+    "product_bill_updater",
+    async (data) => {
       const { eventId, orderId, distributorId, retailerId, items } = data;
 
       await dedupe(eventId, async () => {
@@ -53,5 +53,5 @@ export default async function startProductBillConsumer() {
         console.log("💰 product_bills.updated published");
       });
     },
-  });
+  );
 }
