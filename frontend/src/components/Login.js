@@ -216,7 +216,7 @@ const RegisterPage = ({ userType, onBack, onNavigateToLogin }) => {
   const [location, setLocation] = useState('');
   const [registerData, setRegisterData] = useState({
     businessName: '',
-    CompanyName: '',
+    companyName: '',
     ownerName: '',
     email: '',
     password: '',
@@ -261,7 +261,7 @@ const RegisterPage = ({ userType, onBack, onNavigateToLogin }) => {
       const payload = {
         ...(userType === 'retailers' 
           ? { businessName: registerData.businessName }
-          : { CompanyName: registerData.CompanyName }
+          : { companyName: registerData.companyName }
         ),
         ownerName: registerData.ownerName,
         email: registerData.email,
@@ -278,7 +278,7 @@ const RegisterPage = ({ userType, onBack, onNavigateToLogin }) => {
       
       setRegisterData({
         businessName: '',
-        CompanyName: '',
+        companyName: '',
         ownerName: '',
         email: '',
         password: '',
@@ -333,10 +333,10 @@ const RegisterPage = ({ userType, onBack, onNavigateToLogin }) => {
                 <Building2 className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
                 <input
                   type="text"
-                  value={userType === 'retailers' ? registerData.businessName : registerData.CompanyName}
+                  value={userType === 'retailers' ? registerData.businessName : registerData.companyName}
                   onChange={(e) => setRegisterData({
                     ...registerData,
-                    [userType === 'retailers' ? 'businessName' : 'CompanyName']: e.target.value
+                    [userType === 'retailers' ? 'businessName' : 'companyName']: e.target.value
                   })}
                   className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="Enter name"

@@ -177,7 +177,7 @@ const ConnectionModal = ({ isOpen, onClose }) => {
         {request.status === 'pending' && (
           <div className="flex gap-2">
             <button
-              onClick={() => handleRequestResponse(request._id, 'approve')}
+              onClick={() => handleRequestResponse(request.id, 'approve')}
               disabled={loading}
               className="flex items-center gap-1 px-3 py-1 bg-green-500 hover:bg-green-600 text-white rounded text-sm font-medium transition-colors disabled:opacity-50"
             >
@@ -254,37 +254,41 @@ const ConnectionModal = ({ isOpen, onClose }) => {
         </div>
         
         {showSendRequest && (
-          <div className="mt-3 p-3 bg-gray-50 rounded">
-            <textarea
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              placeholder="Add a message (optional)"
-              className="w-full p-2 border border-gray-200 rounded resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-              rows="2"
-            />
-            <div className="flex gap-2 mt-2">
-              <button
-                onClick={() => {
-                  sendConnectionRequest(retailer._id, message);
-                  setShowSendRequest(false);
-                  setMessage('');
-                }}
-                className="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white rounded text-sm font-medium transition-colors"
-              >
-                Send Request
-              </button>
-              <button
-                onClick={() => {
-                  setShowSendRequest(false);
-                  setMessage('');
-                }}
-                className="px-3 py-1 bg-gray-300 hover:bg-gray-400 text-gray-700 rounded text-sm font-medium transition-colors"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        )}
+  <div 
+    className="mt-3 p-3 bg-gray-50 rounded"
+    onClick={(e) => e.stopPropagation()}   // 🔥 prevent auto-close
+  >
+    <textarea
+      value={message}
+      onChange={(e) => setMessage(e.target.value)}
+      placeholder="Add a message (optional)"
+      className="w-full p-2 border border-gray-200 rounded resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+      rows="2"
+    />
+    <div className="flex gap-2 mt-2">
+      <button
+        onClick={() => {
+          sendConnectionRequest(retailer.id, message);
+          setShowSendRequest(false);
+          setMessage('');
+        }}
+        className="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white rounded text-sm font-medium transition-colors"
+      >
+        Send Request
+      </button>
+      <button
+        onClick={() => {
+          setShowSendRequest(false);
+          setMessage('');
+        }}
+        className="px-3 py-1 bg-gray-300 hover:bg-gray-400 text-gray-700 rounded text-sm font-medium transition-colors"
+      >
+        Cancel
+      </button>
+    </div>
+  </div>
+)}
+
       </div>
     );
   };
@@ -293,7 +297,10 @@ const ConnectionModal = ({ isOpen, onClose }) => {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-6xl w-full h-[90vh] overflow-hidden flex flex-col">
+      <div
+  className="bg-white rounded-2xl shadow-2xl max-w-6xl w-full h-[90vh] overflow-hidden flex flex-col"
+  onClick={(e) => e.stopPropagation()}  // 🔥 prevents clicks from closing or resetting cards
+>
         {/* Header */}
         <div className="bg-gradient-to-r from-blue-600 to-purple-700 p-4 text-white flex justify-between items-center">
           <div>
@@ -368,7 +375,7 @@ const ConnectionModal = ({ isOpen, onClose }) => {
                   {connectionRequests
                     .filter(r => r.status === 'pending')
                     .map(request => (
-                      <ConnectionRequestCard key={request._id} request={request} />
+                      <ConnectionRequestCard key={request.id} request={request} />
                     ))}
                 </div>
               )}
@@ -386,7 +393,7 @@ const ConnectionModal = ({ isOpen, onClose }) => {
               ) : (
                 <div>
                   {connectedRetailers.map(retailer => (
-                    <RetailerCard key={retailer._id} retailer={retailer} />
+                    <RetailerCard key={retailer.id} retailer={retailer} />
                   ))}
                 </div>
               )}
@@ -469,7 +476,7 @@ const ConnectionModal = ({ isOpen, onClose }) => {
                         Found {searchResults.length} retailers
                       </div>No Res
                       {searchResults.map(retailer => (
-                        <RetailerCard key={retailer._id} retailer={retailer} isSearch={true} />
+                        <RetailerCard key={retailer.id} retailer={retailer} isSearch={true} />
                       ))}
                     </div>
                   )}
@@ -480,7 +487,7 @@ const ConnectionModal = ({ isOpen, onClose }) => {
                 <div>
                   <h4 className="font-semibold text-blue-700 mb-2">Retailers in your area or business type</h4>
                   {suggestedRetailers.map((retailer) => (
-                    <RetailerCard key={retailer._id} retailer={retailer} isSearch={true} />
+                    <RetailerCard key={retailer.id} retailer={retailer} isSearch={true} />
                   ))}
                 </div>
               )}
@@ -503,7 +510,7 @@ const ConnectionModal = ({ isOpen, onClose }) => {
               />
               <div className="flex gap-2">
                 <button
-                  onClick={() => handleRequestResponse(selectedRequest._id, 'reject', 'Connection rejected by distributor')}
+                  onClick={() => handleRequestResponse(selectedRequest.id, 'reject', 'Connection rejected by distributor')}
                   className="flex-1 px-3 py-2 bg-red-500 hover:bg-red-600 text-white rounded font-medium transition-colors text-sm"
                 >
                   Reject Request
@@ -710,7 +717,7 @@ export default function DistributorProfile() {
                 {distributor.retailers && distributor.retailers.length > 0 ? (
                   distributor.retailers.map((retailer, index) => (
                     <div
-                      key={retailer._id || index}
+                      key={retailer.id || index}
                       className="flex flex-col sm:flex-row sm:justify-between sm:items-center bg-white p-3 rounded-lg shadow mb-2"
                     >
                       <p className="text-blue-800 font-medium text-base">{retailer.businessName}</p>

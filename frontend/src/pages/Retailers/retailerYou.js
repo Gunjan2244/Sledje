@@ -163,7 +163,7 @@ export default function RetailerYou() {
    const sendConnectionRequest = async (distributorId, message = '') => {
     try {
       const response = await API.post('/connections/request', {
-        retailer: user._id,
+        retailer: user.id,
         distributorId,
         message
       });
@@ -171,7 +171,7 @@ export default function RetailerYou() {
       // Fix: Don't call response.json() on axios response
       if (response.status === 200 || response.status === 201) {
         alert('Connection request sent successfully!');
-        setSearchResults(prev => prev.filter(d => d._id !== distributorId));
+        setSearchResults(prev => prev.filter(d => d.id !== distributorId));
         fetchConnectionRequests(); // Refresh requests
       } else {
         alert(response.data?.message || 'Failed to send connection request');
@@ -256,10 +256,10 @@ export default function RetailerYou() {
   const fetchSuggestedDistributors = async () => {
     try {
       setLoading(true);
-      const pincode = retailerProfile?.pincode;
-      const businessType = retailerProfile?.businessType;
+      const pincode = retailerProfile?.retailers.pincode;
+      const businessType = retailerProfile?.retailers.businessType;
       if (!pincode && !businessType) return;
-      const response = await API.get(`/connections/suggestions?pincode=${pincode}&businessType=${businessType}`);
+      const response = await API.get(`/connections/suggestions?retailerUserId=${retailerProfile.users.id}`);
       const distributors = response.data?.distributors || response.data || [];
       setSuggestedDistributors(Array.isArray(distributors) ? distributors : []);
     } catch (error) {
@@ -271,67 +271,67 @@ export default function RetailerYou() {
   };
 
   return (
-    <div className="min-h-screen bg-blue-100 p-3 md:p-6 flex flex-col lg:flex-row gap-3 md:gap-6">
+    <div className="min-h-screen bg-gray-50 p-3 md:p-6 flex flex-col lg:flex-row gap-3 md:gap-6">
       {/* Your Account Section */}
-      <div className="flex-1 bg-blue-600 text-white rounded-lg shadow-lg p-4 md:p-6">
-        <h1 className="text-2xl md:text-3xl font-bold mb-4 md:mb-6">Your Account</h1>
+      <div className="flex-1 bg-white rounded-lg shadow-lg p-4 md:p-6">
+        <h1 className="text-2xl md:text-3xl font-bold mb-4 md:mb-6 text-gray-800">Your Account</h1>
 
         {/* Account Areas */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4 mb-6 md:mb-10">
-          <div className="flex items-center bg-blue-700 p-3 md:p-4 rounded-lg shadow">
+          <div className="flex items-center bg-white border border-gray-200 p-3 md:p-4 rounded-lg shadow-md hover:shadow-lg transition-shadow">
             <div className="w-12 h-12 md:w-14 md:h-14 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
               <CircleCheck className="w-6 h-6 md:w-8 md:h-8 text-green-600" />
             </div>
             <div className="ml-3 md:ml-4">
-              <h3 className="text-base md:text-lg font-bold">Your Orders History</h3>
-              <p className="text-xs md:text-sm text-gray-200">View and manage your past orders.</p>
+              <h3 className="text-base md:text-lg font-bold text-gray-800">Your Orders History</h3>
+              <p className="text-xs md:text-sm text-gray-600">View and manage your past orders.</p>
             </div>
           </div>
 
-          <div className="flex items-center bg-blue-700 p-3 md:p-4 rounded-lg shadow">
+          <div className="flex items-center bg-white border border-gray-200 p-3 md:p-4 rounded-lg shadow-md hover:shadow-lg transition-shadow">
             <div className="w-12 h-12 md:w-14 md:h-14 bg-yellow-100 rounded-full flex items-center justify-center flex-shrink-0">
               <Check className="w-6 h-6 md:w-8 md:h-8 text-yellow-600" />
             </div>
             <div className="ml-3 md:ml-4">
-              <h3 className="text-base md:text-lg font-bold">Login and Security</h3>
-              <p className="text-xs md:text-sm text-gray-200">Update your password and account settings.</p>
+              <h3 className="text-base md:text-lg font-bold text-gray-800">Login and Security</h3>
+              <p className="text-xs md:text-sm text-gray-600">Update your password and account settings.</p>
             </div>
           </div>
 
-          <div className="flex items-center bg-blue-700 p-3 md:p-4 rounded-lg shadow">
+          <div className="flex items-center bg-white border border-gray-200 p-3 md:p-4 rounded-lg shadow-md hover:shadow-lg transition-shadow">
             <div className="w-12 h-12 md:w-14 md:h-14 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
               <Trash className="w-6 h-6 md:w-8 md:h-8 text-red-600" />
             </div>
             <div className="ml-3 md:ml-4">
-              <h3 className="text-base md:text-lg font-bold">Your Addresses</h3>
-              <p className="text-xs md:text-sm text-gray-200">Manage your saved delivery addresses.</p>
+              <h3 className="text-base md:text-lg font-bold text-gray-800">Your Addresses</h3>
+              <p className="text-xs md:text-sm text-gray-600">Manage your saved delivery addresses.</p>
             </div>
           </div>
 
-          <div className="flex items-center bg-blue-700 p-3 md:p-4 rounded-lg shadow">
+          <div className="flex items-center bg-white border border-gray-200 p-3 md:p-4 rounded-lg shadow-md hover:shadow-lg transition-shadow">
             <div className="w-12 h-12 md:w-14 md:h-14 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0">
               <CreditCard className="w-6 h-6 md:w-8 md:h-8 text-purple-600" />
             </div>
             <div className="ml-3 md:ml-4">
-              <h3 className="text-base md:text-lg font-bold">Your Cards and Payments</h3>
-              <p className="text-xs md:text-sm text-gray-200">Manage your saved cards and payment methods.</p>
+              <h3 className="text-base md:text-lg font-bold text-gray-800">Your Cards and Payments</h3>
+              <p className="text-xs md:text-sm text-gray-600">Manage your saved cards and payment methods.</p>
             </div>
           </div>
 
-          <div className="flex items-center bg-blue-700 p-3 md:p-4 rounded-lg shadow sm:col-span-2">
+          <div className="flex items-center bg-white border border-gray-200 p-3 md:p-4 rounded-lg shadow-md hover:shadow-lg transition-shadow sm:col-span-2">
             <div className="w-12 h-12 md:w-14 md:h-14 bg-pink-100 rounded-full flex items-center justify-center flex-shrink-0">
               <Phone className="w-6 h-6 md:w-8 md:h-8 text-pink-600" />
             </div>
             <div className="ml-3 md:ml-4">
-              <h3 className="text-base md:text-lg font-bold">Contact Us</h3>
-              <p className="text-xs md:text-sm text-gray-200">Reach out to us for support or inquiries.</p>
+              <h3 className="text-base md:text-lg font-bold text-gray-800">Contact Us</h3>
+              <p className="text-xs md:text-sm text-gray-600">Reach out to us for support or inquiries.</p>
             </div>
           </div>
         </div>
 
         {/* Carousel Section */}
-        <div className="bg-white p-3 md:p-4 rounded-lg shadow-lg">
-          <h2 className="text-lg md:text-xl font-bold text-blue-800 mb-3 md:mb-4">Discover More with Slege</h2>
+        <div className="bg-white border border-gray-200 p-3 md:p-4 rounded-lg shadow-md">
+          <h2 className="text-lg md:text-xl font-bold text-gray-800 mb-3 md:mb-4">Discover More with Sledje</h2>
           <div
             ref={carouselRef}
             className="flex gap-3 md:gap-4 overflow-x-auto no-scrollbar scroll-smooth"
@@ -364,16 +364,16 @@ export default function RetailerYou() {
           </div>
           <div className="sm:ml-4 text-center sm:text-left">
             <h3 className="text-lg md:text-xl font-semibold text-blue-800">
-              {retailerProfile ? retailerProfile.ownerName : "Loading..."}
+              {retailerProfile ? retailerProfile.retailers.ownerName : "Loading..."}
             </h3>
             <p className="text-sm md:text-base text-gray-600">
-              Owner : {retailerProfile ? retailerProfile.businessName : ""}
+              Owner : {retailerProfile ? retailerProfile.retailers.businessName : ""}
             </p>
             <p className="text-sm md:text-base text-gray-600 break-all sm:break-normal">
-              Email: {retailerProfile ? retailerProfile.email : ""}
+              Email: {retailerProfile ? retailerProfile.users.email : ""}
             </p>
             <p className="text-sm md:text-base text-gray-600">
-              Phone: {retailerProfile ? retailerProfile.phone : ""}
+              Phone: {retailerProfile ? retailerProfile.users.phone : ""}
             </p>
           </div>
         </div>
@@ -433,7 +433,7 @@ export default function RetailerYou() {
                 ) : (
                   connectedDistributors.map((distributor) => (
                     <div
-                      key={distributor._id}
+                      key={distributor.id}
                       className="flex flex-col sm:flex-row sm:justify-between sm:items-center bg-white p-3 rounded-lg shadow mb-2 hover:shadow-md transition-shadow"
                     >
                       <div className="flex-1 mb-2 sm:mb-0">
@@ -443,7 +443,7 @@ export default function RetailerYou() {
                         <p className="text-gray-600 text-xs">{distributor.location}</p>
                       </div>
                       <button
-                        onClick={() => removeConnection(distributor._id)}
+                        onClick={() => removeConnection(distributor.id)}
                         className="bg-red-100 hover:bg-red-200 text-red-600 px-3 py-1 rounded text-xs transition-colors"
                       >
                         Remove
@@ -469,7 +469,7 @@ export default function RetailerYou() {
                 ) : (
                   connectionRequests.map((request) => (
                     <div
-                      key={request._id}
+                      key={request.id}
                       className="bg-white p-3 rounded-lg shadow mb-2 hover:shadow-md transition-shadow"
                     >
                       <div className="flex justify-between items-start mb-2">
@@ -551,7 +551,7 @@ export default function RetailerYou() {
                 <div>
                   <h4 className="font-semibold text-blue-700 mb-2">Distributors in your area or business type</h4>
                   {suggestedDistributors.map((distributor) => (
-                    <div key={distributor._id} className="bg-gray-50 p-4 rounded-lg mb-3 hover:bg-gray-100 transition-colors">
+                    <div key={distributor.id} className="bg-gray-50 p-4 rounded-lg mb-3 hover:bg-gray-100 transition-colors">
                       <div className="flex justify-between items-start">
                         <div className="flex-1">
                           <h4 className="font-medium text-blue-800">{distributor.companyName}</h4>
@@ -560,21 +560,20 @@ export default function RetailerYou() {
                           <p className="text-sm text-gray-600">{distributor.location}</p>
                           <p className="text-sm text-gray-600">{distributor.businessType}</p>
                         </div>
-                        {!distributor.requestStatus ? (
-                          <button
-                            onClick={() => sendConnectionRequest(distributor._id)}
-                            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm transition-colors flex items-center"
-                          >
-                            <UserPlus className="w-4 h-4 mr-1" />
-                            Connect
-                          </button>
-                        ) : (
-                          <span className="px-4 py-2 rounded-lg text-sm bg-gray-200 text-gray-600 font-semibold flex items-center">
-                            {distributor.requestStatus === 'pending' && <>Requested</>}
-                            {distributor.requestStatus === 'approved' && <>Connected</>}
-                            {distributor.requestStatus === 'rejected' && <>Rejected</>}
-                          </span>
-                        )}
+                        {!distributor.requestStatus && !distributor.connectionStatus ? (
+                            <button
+                                onClick={() => sendConnectionRequest(distributor.id)}
+                                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm">
+                                          <UserPlus className="w-4 h-4 mr-1" /> Connect
+                                            </button>
+                                            ) : (
+  <span className="px-4 py-2 rounded-lg text-sm bg-gray-200 text-gray-600 font-semibold flex items-center">    {distributor.connectionStatus && "Connected"}
+    {!distributor.connectionStatus && distributor.requestStatus === "pending" && "Requested"}
+    {!distributor.connectionStatus && distributor.requestStatus === "rejected" && "Rejected"}
+    {!distributor.connectionStatus && distributor.requestStatus === "approved" && "Approved"}
+  </span>
+)}
+
                       </div>
                     </div>
                   ))}
@@ -590,7 +589,7 @@ export default function RetailerYou() {
               ) : (
                 searchResults.map((distributor) => (
                   <div
-                    key={distributor._id}
+                    key={distributor.id}
                     className="bg-gray-50 p-4 rounded-lg mb-3 hover:bg-gray-100 transition-colors"
                   >
                     <div className="flex justify-between items-start">
@@ -602,7 +601,7 @@ export default function RetailerYou() {
                         <p className="text-sm text-gray-600">{distributor.businessType}</p>
                       </div>
                       <button
-                        onClick={() => sendConnectionRequest(distributor._id)}
+                        onClick={() => sendConnectionRequest(distributor.id)}
                         className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm transition-colors flex items-center"
                       >
                         <UserPlus className="w-4 h-4 mr-1" />

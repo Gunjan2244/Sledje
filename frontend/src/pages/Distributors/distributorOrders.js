@@ -44,7 +44,7 @@ const DistributorOrderManagement = () => {
     const fetchOrders = async () => {
       setLoading(true);
       try {
-        const res = await API.get('/orders/distributor/order');
+        const res = await API.get('/orders/distributor/orders');
         setOrders(res.data.data || []);
       } catch {
         setOrders([]);
